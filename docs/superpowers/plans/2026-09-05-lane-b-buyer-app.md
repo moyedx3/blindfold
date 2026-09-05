@@ -6,7 +6,7 @@
 
 **Architecture:** The buyer app is the earlier prototype's buyer app with its payment step replaced: instead of showing a payment request, it calls the contract's `purchase` circuit through the wallet with a fresh one-time key. Polling the indexer for the sealed key, trial-opening it, hashing and decrypting the content, and the recovery file are carried over unchanged. A fake wallet and a mock indexer let the whole flow run in a browser test with no chain.
 
-**Tech Stack:** React 19, Vite 7, TypeScript 5.9, libsodium-wrappers 0.7.15, @midnight-ntwrk/dapp-connector-api 4.0.1, @midnight-ntwrk/midnight-js 4.1.1 (barrel), fetch-zk-config-provider / http-client-proof-provider / indexer-public-data-provider / level-private-state-provider 4.1.1, @midnight-ntwrk/ledger-v8 8.1.0, compact-js 2.5.1, compact-runtime 0.16.0, vitest 4, Playwright 1.61.
+**Tech Stack:** React 19, Vite 8, TypeScript 5.9, libsodium-wrappers 0.7.15, @midnight-ntwrk/dapp-connector-api 4.0.1, @midnight-ntwrk/midnight-js 4.1.1 (barrel), fetch-zk-config-provider / http-client-proof-provider / indexer-public-data-provider / level-private-state-provider 4.1.1, @midnight-ntwrk/ledger-v8 8.1.0, compact-js 2.5.1, compact-runtime 0.16.0, vitest 4, Playwright 1.61.
 
 **Spec:** `docs/superpowers/specs/2026-09-05-blindfold-design.md` (sections 6, 8, 11)
 
@@ -554,7 +554,7 @@ import { App } from './App';
 createRoot(document.getElementById('root')!).render(<React.StrictMode><App /></React.StrictMode>);
 ```
 
-`buyer/tsconfig.json`: `{ "extends": "../tsconfig.base.json", "compilerOptions": { "lib": ["ES2022", "DOM", "DOM.Iterable"], "module": "ESNext", "moduleResolution": "Bundler", "jsx": "react-jsx", "types": ["vite/client"] }, "include": ["src", "test", "scripts"] }`
+`buyer/tsconfig.json`: `{ "extends": "../tsconfig.base.json", "compilerOptions": { "lib": ["ES2022", "DOM", "DOM.Iterable"], "module": "ESNext", "moduleResolution": "Bundler", "jsx": "react-jsx", "types": ["vite/client", "node"] }, "include": ["src", "test", "scripts"] }`
 `buyer/vitest.config.ts`: `import { defineConfig } from 'vitest/config'; export default defineConfig({ test: { environment: 'jsdom', include: ['test/**/*.test.ts'] } });`
 
 - [ ] **Step 3: Failing tests for the changed modules**

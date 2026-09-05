@@ -38,4 +38,16 @@ describe('DispatchPoller against MockDropApi', () => {
     expect(await poller.poll([purchase])).toEqual([]);
     expect(getDispatchSpy).toHaveBeenCalledTimes(1); // not refetched on the second pass
   });
+
+  it('throws on a content hash mismatch', async () => {
+    await sodiumReady();
+    const api = new MockDropApi();
+    const entry = await api.seedDrop({ drop_id: 11, price_star: '10', title: 'x', h_content: '' }, new TextEncoder().encode('trustworthy content'));
+    const purchase = await createPurchase(entry, api.contractAddress);
+    api.corruptContent(entry.h_content);
+    await api.dispatchFor(purchase.ePub, entry.drop_id);
+
+    const poller = new DispatchPoller(api);
+    await expect(poller.poll([purchase])).rejects.toThrow(/content hash mismatch/);
+  });
 });

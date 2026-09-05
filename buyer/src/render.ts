@@ -1,5 +1,5 @@
-// Decide how to render decrypted content. The catalog (I3-a) carries no content_type, so we sniff
-// common image magic bytes; everything else falls back to text/download.
+// The catalog carries no content type, so we sniff common image and video magic bytes; everything
+// else falls back to text or download.
 // (Minor gap noted to the team: add `content_type` to I3-a to avoid sniffing.)
 
 export type RenderKind = "image" | "video" | "text" | "binary";
