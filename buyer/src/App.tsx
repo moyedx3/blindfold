@@ -93,7 +93,7 @@ export function App() {
           <section className="panel"><div className="panel-head"><h2>Paid for “{purchase.title}”</h2><button onClick={reset}>Cancel</button></div>
             <p>Transaction {purchase.txId ?? '(pending)'} accepted. Waiting for the sealed key…</p>
             <div className="warn">⚠ Don’t close this tab until it unlocks: the one-time key lives here. Save a recovery file to be safe.</div>
-            <label className="remember"><input type="checkbox" checked={remember} onChange={(e) => { setRemember(e.target.checked); if (e.target.checked && purchase) savePurchase(purchase); if (!e.target.checked) clearPurchase(); }} /> Keep on this device for 24h</label>
+            <label className="remember"><input type="checkbox" checked={remember} onChange={(e) => { setRemember(e.target.checked); if (e.target.checked && purchase) savePurchase(purchase); if (!e.target.checked) clearPurchase(); }} /> Keep on this device for 24h (on by default; uncheck to keep the key only in this tab)</label>
             <div className="actions"><button onClick={downloadRecovery}>Download recovery file</button></div>
           </section>) : null}
         {unlock ? <Unlocked result={unlock} onDone={reset} /> : null}

@@ -19,7 +19,7 @@
 - Wire formats (spec section 6): `ePub` is a libsodium `crypto_box_keypair` public key; the purchase coin is `{ nonce: 32 random bytes, color: 32 zero bytes, value: price }`; the dispatch blob is 80 bytes and opens with `crypto_box_seal_open(blob, ePub, ePriv)`; content is `nonce(12) ‖ AES-256-GCM ‖ tag(16)` with `h_content = sha256(blob)`.
 - Indexer HTTP surface: `GET /contract` `{network, contract_address}`, `GET /catalog` `[{drop_id, price_star, title, h_content}]`, `GET /dispatch` `string[]`, `GET /dispatch/:key`, `GET /bucket/:key`.
 - `1 NIGHT = 1_000_000 STAR`. Prices display as NIGHT with up to 6 decimals.
-- Never log or persist wallet keys. `e_priv` persists only in localStorage (24 h, opt-in) and the recovery file, as before.
+- Never log or persist wallet keys. `e_priv` persists only in localStorage (24 h, on by default with a visible checkbox) and the recovery file.
 - Tests: vitest for modules, Playwright for the smoke. Commit after every task.
 
 ---
