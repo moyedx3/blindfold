@@ -12,3 +12,5 @@ dist/
 .env
 .env.*
 !.env.example
+# browser spike: regenerate by copying spike/hello/contracts/managed/blindfold after `compact compile`
+spike/web/src/contract/compiled/
