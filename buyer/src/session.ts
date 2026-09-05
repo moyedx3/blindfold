@@ -1,4 +1,4 @@
-import { balances, buildProviders, connectContract, connectWallet, fakeConnectedWallet, FakeBlindfoldClient, listWallets, type BlindfoldClient, type ConnectedWallet, type WalletChoice } from '@blindfold/midnight-web';
+import { balances, buildProviders, connectContract, connectWallet, fakeConnectedWallet, FakeBlindfoldClient, listWallets, setNetworkId, type BlindfoldClient, type ConnectedWallet, type WalletChoice } from '@blindfold/midnight-web';
 import type { DropApi } from './api';
 import { MockDropApi } from './mockApi';
 
@@ -9,6 +9,10 @@ export function availableWallets(): WalletChoice[] { return FAKE ? [{ key: 'fake
 
 export async function openSession(api: DropApi, choice: WalletChoice): Promise<Session> {
   const info = await api.fetchContract();
+  // Every wallet/contract/provider call downstream needs midnight-js's network id set first, or
+  // it throws "Network ID has not been configured" — set it right after we learn the network,
+  // before building anything else (C1 / ruling B12).
+  setNetworkId(info.network);
   if (FAKE) {
     const mock = api as MockDropApi;
     const client = new FakeBlindfoldClient({ drops: new Map((await api.fetchCatalog()).map((e) => [BigInt(e.drop_id), BigInt(e.price_star)])) },
@@ -18,7 +22,7 @@ export async function openSession(api: DropApi, choice: WalletChoice): Promise<S
   const wallet = await connectWallet(info.network, choice);
   if (wallet.networkId !== info.network) throw new Error(`wallet is on ${wallet.networkId}, the drop contract lives on ${info.network}. Switch the wallet network.`);
   const providers = await buildProviders(wallet, { zkAssetsUrl: `${window.location.origin}/contract/blindfold`, storeName: 'blindfold-buyer', proofServerFallback: import.meta.env.VITE_PROOF_SERVER_URL ?? 'http://localhost:6300' });
-  const client = await connectContract(providers, info.contract_address, crypto.getRandomValues(new Uint8Array(32)), `blindfold-buyer-${info.contract_address.slice(0, 8)}`);
+  const client = await connectContract(providers, info.contract_address, crypto.getRandomValues(new Uint8Array(32)), `blindfold-buyer-${info.contract_address.slice(0, 8)}`, info.network);
   return { wallet, client, contractAddress: info.contract_address, network: info.network };
 }
 

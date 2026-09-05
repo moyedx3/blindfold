@@ -1,6 +1,15 @@
 import { describe, it, expect } from 'vitest';
-import { ledgerView, nightCoin } from '../src/contract';
+import { applyNetworkId, getNetworkId, ledgerView, nightCoin } from '../src/contract';
 import { FakeBlindfoldClient } from '../src/fake';
+
+describe('applyNetworkId', () => {
+  it('sets midnight-js\'s global network id, readable back via getNetworkId', () => {
+    applyNetworkId('undeployed');
+    expect(getNetworkId()).toBe('undeployed');
+    applyNetworkId('preview');
+    expect(getNetworkId()).toBe('preview');
+  });
+});
 
 const iter = <K, V>(e: [K, V][]) => ({ [Symbol.iterator]: () => e[Symbol.iterator]() });
 

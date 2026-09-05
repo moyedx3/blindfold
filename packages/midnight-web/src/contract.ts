@@ -1,8 +1,20 @@
 import { CompiledContract } from '@midnight-ntwrk/compact-js';
 import { findDeployedContract } from '@midnight-ntwrk/midnight-js/contracts';
-import { setNetworkId } from '@midnight-ntwrk/midnight-js/network-id';
+import { getNetworkId, setNetworkId } from '@midnight-ntwrk/midnight-js/network-id';
 import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
 import * as Blindfold from '@blindfold/contract/contract';
+
+export { getNetworkId, setNetworkId };
+
+/**
+ * Sets midnight-js's process-global network id. Both `connectContract` and `readLedger` call
+ * this before touching any wallet/contract/indexer provider — none of those work until
+ * `setNetworkId` has run at least once (they throw "Network ID has not been configured").
+ * Exported standalone so it's easy to unit-test without stubbing the rest of midnight-js.
+ */
+export function applyNetworkId(networkId: string): void {
+  setNetworkId(networkId as any);
+}
 
 export type LedgerView = {
   drops: Map<bigint, bigint>; dropOwner: Map<bigint, Uint8Array>; kCommit: Map<bigint, Uint8Array>;
@@ -30,7 +42,7 @@ export function nightCoin(value: bigint) {
 }
 
 export async function readLedger(indexerUri: string, indexerWsUri: string, contractAddress: string, networkId: string): Promise<LedgerView> {
-  setNetworkId(networkId as any);
+  applyNetworkId(networkId);
   const state = await indexerPublicDataProvider(indexerUri, indexerWsUri).queryContractState(contractAddress);
   if (!state) throw new Error(`no contract at ${contractAddress}`);
   return ledgerView(Blindfold.ledger(state.data));
@@ -39,7 +51,8 @@ export async function readLedger(indexerUri: string, indexerWsUri: string, contr
 type PS = { secret: Uint8Array };
 const witnesses = { creatorSecret: (ctx: { privateState: PS }): [PS, Uint8Array] => [ctx.privateState, ctx.privateState.secret] };
 
-export async function connectContract(providers: any, contractAddress: string, secret: Uint8Array, privateStateId: string, zkAssetsPath = '/contract/blindfold'): Promise<BlindfoldClient> {
+export async function connectContract(providers: any, contractAddress: string, secret: Uint8Array, privateStateId: string, networkId: string, zkAssetsPath = '/contract/blindfold'): Promise<BlindfoldClient> {
+  applyNetworkId(networkId);
   const compiled = CompiledContract.make<any>('blindfold', Blindfold.Contract).pipe(
     CompiledContract.withWitnesses(witnesses), CompiledContract.withCompiledFileAssets(zkAssetsPath),
   );
@@ -49,6 +62,10 @@ export async function connectContract(providers: any, contractAddress: string, s
     purchase: async (dropId, ePub, price) => ref(await found.callTx.purchase(dropId, ePub, nightCoin(price))),
     createDrop: async (dropId, price, commit) => ref(await found.callTx.createDrop(dropId, price, commit)),
     withdraw: async (idx) => ref(await found.callTx.withdraw(idx)),
-    ledger: async () => { const s = await providers.publicDataProvider.queryContractState(contractAddress); return ledgerView(Blindfold.ledger(s.data)); },
+    ledger: async () => {
+      const s = await providers.publicDataProvider.queryContractState(contractAddress);
+      if (!s) throw new Error(`no contract at ${contractAddress}`);
+      return ledgerView(Blindfold.ledger(s.data));
+    },
   };
 }
