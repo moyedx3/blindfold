@@ -16,3 +16,5 @@ dist/
 spike/web/src/contract/compiled/
 # midnight-js private-state store (local)
 **/midnight-level-db/
+# local git worktrees
+.worktrees/
