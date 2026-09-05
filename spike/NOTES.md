@@ -100,3 +100,7 @@ which this machine doesn't have; worked around by downloading
 extracting it into `~/.phala-cloud/simulator/0.5.3/` myself (`tar -xvf ... --strip-components=1`,
 matching what the CLI's installer does) — after that, `npx phala simulator start`/`stop` worked
 normally.
+- 2026-09-05 Lane B real-wallet run (user, Lace on Undeployed, buyer app on the merged indexer): connect showed
+  balances; Buy on drop 5 (1 NIGHT) proved and submitted in ~20 s; the page unlocked within a few seconds of the
+  transaction landing (indexer log: `dispatched purchase 4 (drop 5)`); refresh mid-wait resumed from local storage;
+  recovery-file download and manual unlock both worked (second purchase dispatched as purchase 5). No errors.
