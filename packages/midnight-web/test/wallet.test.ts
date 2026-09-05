@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { listWallets, explainWalletError, connectWallet } from '../src/wallet';
+import { listWallets, explainWalletError, connectWallet, balances } from '../src/wallet';
 
 const fakeApi = (name: string) => ({ name, icon: 'data:,', apiVersion: '4.0.1', connect: async () => connected });
 const connected = {
@@ -25,6 +25,22 @@ describe('connectWallet', () => {
     expect(w.indexerUri).toBe('http://i');
     expect(w.coinPublicKey).toBe('aa');
     expect(w.shieldedAddress).toContain('mn_shield');
+  });
+});
+
+describe('balances', () => {
+  it('reads shielded/unshielded NIGHT and DUST from the connected wallet', async () => {
+    const w = await connectWallet('undeployed', { key: 'mnLace', name: 'lace', apiVersion: '4.0.1', api: fakeApi('lace') as any });
+    expect(await balances(w)).toEqual({ shieldedNight: 5n, unshieldedNight: 7n, dust: 1n, dustCap: 9n });
+  });
+
+  it('defaults NIGHT balances to 0n when the balance records are empty', async () => {
+    const emptyConnected = { ...connected, getShieldedBalances: async () => ({}), getUnshieldedBalances: async () => ({}) };
+    const emptyApi = { name: 'lace', icon: 'data:,', apiVersion: '4.0.1', connect: async () => emptyConnected };
+    const w = await connectWallet('undeployed', { key: 'mnLace', name: 'lace', apiVersion: '4.0.1', api: emptyApi as any });
+    const b = await balances(w);
+    expect(b.shieldedNight).toBe(0n);
+    expect(b.unshieldedNight).toBe(0n);
   });
 });
 
