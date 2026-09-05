@@ -1,0 +1,12 @@
+.git
+.worktrees
+.superpowers
+spike
+**/node_modules
+**/data
+**/*.log
+**/midnight-level-db
+**/.midnight-state.json
+**/.midnight-wallet-state
+**/.env
+**/.env.*
