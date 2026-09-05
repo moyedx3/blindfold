@@ -1,6 +1,6 @@
 # Blindfold
 
-Private-payment unlockable content on Midnight (successor of the "Drop" prototype). Target: Midnight Korea
+Unlockable content with private payments on Midnight (second iteration of the team's earlier prototype, internal name "Drop"). Target: Midnight Korea
 Hackathon 2026, submission deadline 2026-09-28 00:00 KST.
 
 Read first: `docs/guide.md` (what, why, status, resources, setup), then `spike/NOTES.md` (versions, gotchas, run logs).

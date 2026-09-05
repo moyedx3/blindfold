@@ -1,6 +1,6 @@
 // Blindfold spike contract (THROWAWAY): payment gate for unlockable drops.
 //
-// The buyer registers a one-time key on-chain. A buyer calls `purchase` with a fresh
+// A buyer calls `purchase` with a fresh
 // one-time public key `ePub`; the circuit enforces the price, escrows the
 // shielded coin inside the contract, and records `ePub` on the public ledger.
 // The off-chain indexer (TEE) reads `purchases` and seals K_drop to `ePub`.
