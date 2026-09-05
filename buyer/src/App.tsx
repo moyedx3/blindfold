@@ -1,2 +1,258 @@
-// Placeholder — replaced by Task 5's real buyer UI.
-export function App() { return null; }
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { explainWalletError, type WalletChoice } from '@blindfold/midnight-web';
+import type { CatalogEntry, DropApi } from './api';
+import { HttpDropApi } from './api';
+import { buyDrop } from './buy';
+import { bytesToArrayBuffer } from './bytes';
+import { decryptContent } from './content';
+import { MockDropApi } from './mockApi';
+import { clearPurchase, loadPurchase, savePurchase } from './persist';
+import { DispatchPoller, type UnlockResult } from './poller';
+import { formatNight } from './price';
+import { fromRecoveryFile, toRecoveryFile, type Purchase } from './purchase';
+import { detectKind, mimeFor } from './render';
+import { sodiumReady, trySealOpen } from './seal';
+import { availableWallets, balances, openSession, FAKE, type Session } from './session';
+// Unlocked, ManualUnlock, Clock, triggerDownload: carried over unchanged from the prototype.
+
+const POLL_MS = 3000;
+const indexerUrl = import.meta.env.VITE_INDEXER_URL ?? 'http://localhost:8080';
+
+async function makeApi(): Promise<DropApi> {
+  if (!FAKE) return new HttpDropApi(indexerUrl);
+  const mock = new MockDropApi();
+  await mock.seedDrop({ drop_id: 1, price_star: '1000000', title: 'Demo drop (fake wallet)', h_content: '' }, new TextEncoder().encode('Hello from Blindfold. This content was unlocked with a fake wallet.'));
+  return mock;
+}
+
+export function App() {
+  const [api, setApi] = useState<DropApi | null>(null);
+  const [catalog, setCatalog] = useState<CatalogEntry[]>([]);
+  const [session, setSession] = useState<Session | null>(null);
+  const [bal, setBal] = useState<{ shieldedNight: bigint; dust: bigint } | null>(null);
+  const [purchase, setPurchase] = useState<Purchase | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [unlock, setUnlock] = useState<UnlockResult | null>(null);
+  const [error, setError] = useState('');
+  const [remember, setRemember] = useState(true);
+  const pollerRef = useRef<DispatchPoller | null>(null);
+  const wallets = useMemo(availableWallets, []);
+
+  useEffect(() => { void makeApi().then(setApi); }, []);
+  const loadCatalog = useCallback(async () => { if (!api) return; try { setCatalog(await api.fetchCatalog()); } catch (e) { setError(String(e)); } }, [api]);
+  useEffect(() => { void loadCatalog(); }, [loadCatalog]);
+  useEffect(() => { const resumed = loadPurchase(); if (resumed) setPurchase(resumed); }, []);
+
+  useEffect(() => {
+    if (!api || !purchase || unlock) return;
+    pollerRef.current ??= new DispatchPoller(api);
+    let alive = true;
+    const tick = async () => {
+      try { await sodiumReady(); const r = await pollerRef.current!.poll([purchase]); if (alive && r.length) { setUnlock(r[0]); clearPurchase(); } }
+      catch (e) { if (alive) setError(e instanceof Error ? e.message : String(e)); }
+    };
+    void tick(); const id = setInterval(() => void tick(), POLL_MS);
+    return () => { alive = false; clearInterval(id); };
+  }, [api, purchase, unlock]);
+
+  const connect = useCallback(async (choice: WalletChoice) => {
+    if (!api) return; setBusy(true); setError('');
+    try { const s = await openSession(api, choice); setSession(s); const b = await balances(s.wallet); setBal({ shieldedNight: b.shieldedNight, dust: b.dust }); }
+    catch (e) { setError(explainWalletError(e)); } finally { setBusy(false); }
+  }, [api]);
+
+  const buy = useCallback(async (entry: CatalogEntry) => {
+    if (!api || !session) return; setBusy(true); setError(''); setUnlock(null); pollerRef.current = null;
+    try { const p = await buyDrop({ api, client: session.client, contractAddress: session.contractAddress }, entry); setPurchase(p); if (remember) savePurchase(p); }
+    catch (e) { setError(explainWalletError(e)); } finally { setBusy(false); }
+  }, [api, session, remember]);
+
+  const reset = useCallback(() => { setPurchase(null); setUnlock(null); pollerRef.current = null; clearPurchase(); }, []);
+  const downloadRecovery = useCallback(() => { if (!purchase) return; triggerDownload(new Blob([JSON.stringify(toRecoveryFile(purchase), null, 2)], { type: 'application/json' }), `blindfold-recovery-${purchase.dropId}-${purchase.id}.json`); }, [purchase]);
+
+  return (
+    <main className="shell"><div className="xp-window">
+      <div className="title-bar"><div className="wintitle"><span className="winicon">🕶️</span><h1>Blindfold</h1></div>
+        <div className="modes">{session ? <span className="on">{session.wallet.name} · {session.network}</span> : <span>not connected</span>}</div></div>
+      <div className="window-body">
+        {error ? <p className="error">{error}</p> : null}
+        {!session ? (
+          <section className="panel"><div className="panel-head"><h2>Connect a Midnight wallet</h2></div>
+            {wallets.length === 0 ? <p className="note">No Midnight wallet found. Install Lace or 1AM and reload.</p> :
+              <ul className="drops">{wallets.map((w) => <li key={w.key}><strong>{w.name}</strong><button className="primary" disabled={busy} onClick={() => void connect(w)}>Connect</button></li>)}</ul>}
+          </section>) : null}
+        {session && bal ? <p className="note">Shielded NIGHT: {formatNight(bal.shieldedNight)} · DUST: {bal.dust.toString()}</p> : null}
+        {session && !purchase ? (
+          <section className="panel"><div className="panel-head"><h2>Catalog</h2><button onClick={() => void loadCatalog()}>Refresh</button></div>
+            {catalog.length === 0 ? <p className="note">No drops yet.</p> :
+              <ul className="drops">{catalog.map((d) => <li key={d.drop_id}><div><strong>{d.title}</strong><span className="price">{formatNight(d.price_star)} NIGHT</span></div>
+                <button className="primary" disabled={busy} onClick={() => void buy(d)}>{busy ? 'proving…' : 'Buy'}</button></li>)}</ul>}
+            <p className="note">Buying sends one shielded transaction from your wallet; proving takes 20 to 60 seconds.</p>
+          </section>) : null}
+        {purchase && !unlock ? (
+          <section className="panel"><div className="panel-head"><h2>Paid for “{purchase.title}”</h2><button onClick={reset}>Cancel</button></div>
+            <p>Transaction {purchase.txId ?? '(pending)'} accepted. Waiting for the sealed key…</p>
+            <div className="warn">⚠ Don’t close this tab until it unlocks: the one-time key lives here. Save a recovery file to be safe.</div>
+            <label className="remember"><input type="checkbox" checked={remember} onChange={(e) => { setRemember(e.target.checked); if (e.target.checked && purchase) savePurchase(purchase); if (!e.target.checked) clearPurchase(); }} /> Keep on this device for 24h</label>
+            <div className="actions"><button onClick={downloadRecovery}>Download recovery file</button></div>
+          </section>) : null}
+        {unlock ? <Unlocked result={unlock} onDone={reset} /> : null}
+        {api ? <ManualUnlock api={api} /> : null}
+      </div></div>
+      <div className="taskbar"><button className="start" type="button">start</button><Clock /></div>
+    </main>
+  );
+}
+
+// Unlocked, ManualUnlock, Clock, triggerDownload: carried over unchanged from the prototype,
+// except ManualUnlock's recovery-file help text, which is rewritten in plain English.
+
+function Unlocked({ result, onDone }: { result: UnlockResult; onDone: () => void }) {
+  const kind = useMemo(() => detectKind(result.content), [result.content]);
+  const objectUrl = useMemo(() => {
+    if (kind !== 'image' && kind !== 'video') return '';
+    return URL.createObjectURL(new Blob([bytesToArrayBuffer(result.content)], { type: mimeFor(result.content) }));
+  }, [kind, result.content]);
+  useEffect(() => () => {
+    if (objectUrl) URL.revokeObjectURL(objectUrl);
+  }, [objectUrl]);
+
+  const text = useMemo(
+    () => (kind === 'text' ? new TextDecoder().decode(result.content) : ''),
+    [kind, result.content]
+  );
+
+  const download = useCallback(() => {
+    const blob = new Blob([bytesToArrayBuffer(result.content)], { type: mimeFor(result.content) });
+    triggerDownload(blob, `blindfold-${result.purchase.dropId}`);
+  }, [result]);
+
+  return (
+    <section className="panel unlocked">
+      <div className="panel-head">
+        <h2>🎉 Unlocked “{result.purchase.title}”</h2>
+        <button onClick={onDone}>Back to catalog</button>
+      </div>
+      {kind === 'image' ? <img className="content-img" src={objectUrl} alt={result.purchase.title} /> : null}
+      {kind === 'video' ? <video className="content-video" src={objectUrl} controls autoPlay loop /> : null}
+      {kind === 'text' ? <pre className="content-text">{text}</pre> : null}
+      {kind === 'binary' ? <p className="note">Binary content — use download.</p> : null}
+      <button onClick={download}>Download content</button>
+    </section>
+  );
+}
+
+// Taskbar clock — real local time, XP-style (h:mm AM/PM).
+function Clock() {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 15000);
+    return () => clearInterval(id);
+  }, []);
+  return <span className="tray">{now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>;
+}
+
+// Standalone tool: browse every published dispatch blob and unlock one by uploading a recovery
+// file (which carries e_priv). Decoupled from the live purchase flow — trial-opens ALL blobs, so
+// it works regardless of which purchase/e_pub the browser currently holds.
+function ManualUnlock({ api }: { api: DropApi }) {
+  const [keys, setKeys] = useState<string[]>([]);
+  const [result, setResult] = useState<UnlockResult | null>(null);
+  const [status, setStatus] = useState('');
+
+  const refresh = useCallback(async () => {
+    setStatus('');
+    try {
+      setKeys(await api.listDispatch());
+    } catch (e) {
+      setStatus(e instanceof Error ? e.message : String(e));
+    }
+  }, [api]);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  const onFile = useCallback(
+    async (file: File) => {
+      setResult(null);
+      setStatus('trial-opening every blob…');
+      await sodiumReady();
+      try {
+        const rec = fromRecoveryFile(await file.text());
+        const dispatchKeys = await api.listDispatch();
+        setKeys(dispatchKeys);
+        for (const key of dispatchKeys) {
+          let blob: Uint8Array;
+          try {
+            blob = await api.getDispatch(key);
+          } catch {
+            continue;
+          }
+          const kDrop = trySealOpen(blob, rec.ePub, rec.ePriv);
+          if (!kDrop) continue; // sealed to a different e_pub — not this recovery file's
+          const content = await api.getContent(rec.hContent);
+          const plaintext = await decryptContent(content, kDrop);
+          setResult({ purchase: rec, kDrop, content: plaintext });
+          setStatus(`✅ unlocked from blob ${key.slice(0, 12)}…`);
+          return;
+        }
+        setStatus(`no blob matched this e_priv (tried ${dispatchKeys.length}). Wrong recovery file, or payment not dispatched yet.`);
+      } catch (e) {
+        setStatus(e instanceof Error ? e.message : String(e));
+      }
+    },
+    [api]
+  );
+
+  return (
+    <section className="panel">
+      <div className="panel-head">
+        <div className="head-title">
+          <h2>Manual unlock — dispatch blobs</h2>
+          <span
+            className="help"
+            tabIndex={0}
+            data-tip="Upload the recovery file from a purchase to find and decrypt your content on this device."
+          >
+            ?
+          </span>
+        </div>
+        <button onClick={() => void refresh()}>Refresh</button>
+      </div>
+      <p className="note">Published dispatch blobs on the indexer: {keys.length}</p>
+      <ul className="drops">
+        {keys.map((k) => (
+          <li key={k}>
+            <code className="uri">{k}</code>
+          </li>
+        ))}
+      </ul>
+      <label>
+        Upload recovery file — trial-opens every blob, decrypts the match:
+        <input
+          type="file"
+          accept="application/json"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) void onFile(f);
+            e.currentTarget.value = '';
+          }}
+        />
+      </label>
+      {status ? <p className="note">{status}</p> : null}
+      {result ? <Unlocked result={result} onDone={() => setResult(null)} /> : null}
+    </section>
+  );
+}
+
+function triggerDownload(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
