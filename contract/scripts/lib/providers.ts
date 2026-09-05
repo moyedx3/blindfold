@@ -23,8 +23,8 @@ export async function loadContractModule() {
 
 export async function loadCompiledContract() {
   const mod = await loadContractModule();
-  return CompiledContract.make('blindfold', mod.Contract).pipe(
-    CompiledContract.withWitnesses(witnesses),
+  return CompiledContract.make<any>('blindfold', mod.Contract).pipe(
+    CompiledContract.withWitnesses(witnesses as any),
     CompiledContract.withCompiledFileAssets(BUILD_DIR),
   );
 }
