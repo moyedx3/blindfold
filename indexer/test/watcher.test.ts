@@ -80,4 +80,17 @@ describe('Watcher', () => {
     const state2 = await store.load();
     expect(state2.dispatched['1']).toBeDefined();
   });
+  it('a stale pending entry for an already-dispatched index is not re-dispatched', async () => {
+    const { store } = setup();
+    await store.save({ dispatched: { '0': 'k0' }, pending: ['0'] });
+    const calls: bigint[] = [];
+    const countingEngine = { dispatch: async (i: bigint) => { calls.push(i); return { key: 'should-not-happen' }; } } as any;
+    const reader = new StaticLedgerReader(snap([[0n, 1n]]));
+    const w = new Watcher({ reader, engine: countingEngine, store });
+    expect(await w.tick()).toEqual({ dispatched: 0, pending: 0 });
+    expect(calls).toEqual([]);
+    const state = await store.load();
+    expect(state.dispatched['0']).toBe('k0');
+    expect(state.pending).toEqual([]);
+  });
 });

@@ -36,6 +36,7 @@ export class Watcher {
     for (let i = 0n; i < snap.purchaseCount; i++) if (!(i.toString() in this.state.dispatched)) todo.add(i);
     let dispatched = 0; const pending: string[] = [];
     for (const i of [...todo].sort((a, b) => (a < b ? -1 : 1))) {
+      if (i.toString() in this.state.dispatched) continue;
       const ePub = snap.purchases.get(i); const dropId = snap.purchaseDrop.get(i);
       if (!ePub || dropId === undefined) { pending.push(i.toString()); continue; }
       let res: { key: string } | { skipped: 'unprovisioned' };
