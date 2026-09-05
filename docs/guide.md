@@ -11,7 +11,72 @@ Blindfold는 잠긴 콘텐츠를 프라이버시 결제로 여는 "눈 가린 �
 Midnight Korea Hackathon 2026 제출용이며, 마감은 **2026-09-28 00:00 KST**.
 2026-09-05에 로컬 devnet에서 핵심 스파이크를 통과했다: 컨트랙트가 가격을 강제하고 구매자의 일회용 키를
 원자적으로 기록하며, Lace 지갑에서 shielded NIGHT로 결제가 되고, 크리에이터가 에스크로된 코인을 회수한다.
+**현황 (2026-09-05):** Lane A(컨트랙트 + 인덱서)와 Lane B(공용 지갑 패키지 + 구매자 앱)는 main에 머지됐고, 테스트가
+모두 통과하며 실제 Lace 지갑으로 구매까지 확인했다. 남은 일은 **Lane C(크리에이터 앱)** 와 **Lane D(배포 + 데모)** 이고,
+둘 다 지금 바로 시작할 수 있다. 무엇을 잡을지, 어떻게 시작할지는 바로 아래 섹션 0을 보라.
 아래는 영어로 이어진다. 에이전트는 이 문서와 `spike/NOTES.md`를 먼저 읽는다.
+
+## 0. Start here: what is done, what to pick up
+
+Last updated 2026-09-05. Everything below is on `main`; nothing is waiting in a branch.
+
+### Done (merged to main)
+
+| Lane | What landed | Proof it works |
+|---|---|---|
+| **A** `contract/` + `indexer/` | Compact contract (`createDrop` / `purchase` / `withdraw`, content-bound key commitment), deploy/fund/ledger scripts, the TEE indexer (attestation, provisioning checked against the chain, ledger watcher, dispatch, HTTP surface, Dockerfile). | 1 compile check, 62 indexer unit tests, a 6-case contract flow test on the devnet, an end-to-end devnet test (purchase → sealed blob opens to the key), a test against Phala's dstack simulator. |
+| **B** `packages/midnight-web/` + `buyer/` | Shared wallet package (DApp-connector discovery, official Lace adapter as midnight-js providers, `BlindfoldClient` over the compiled contract, fakes for tests) and the buyer app (connect → catalog → buy in one shielded tx → poll → trial-open → decrypt, recovery file, manual unlock, 24 h local persistence). | 14 + 25 unit tests, a Playwright smoke through a fake connector and mock indexer, and a real Lace purchase on the local devnet that unlocked in about 20 s. |
+
+Run all of it with section 7b. `npm test` at the root runs every workspace's unit tests.
+
+### Open: pick one of these
+
+| Lane | Builds | Plan | Status |
+|---|---|---|---|
+| **C** `creator/` | Creator web app: encrypt content in the browser, upload the ciphertext, register the drop on-chain with the key commitment, verify the indexer's attestation, seal `K_drop` to it, withdraw escrowed NIGHT later. | `docs/superpowers/plans/2026-09-05-lane-c-creator-app.md` (5 tasks) | **Recommended next.** Unblocked: everything it consumes (`@blindfold/midnight-web`, compiled contract, indexer `POST /provision` and `PUT /bucket`) is merged. Nothing demos end to end without it. |
+| **D** deploy + demo | `deploy/` runbooks (local devnet, Preprod, Phala CVM), one-shot local demo script with headless seeding, CI, submission README, 3-minute demo script. | `docs/superpowers/plans/2026-09-05-lane-d-deploy-demo.md` (6 tasks) | Unblocked. Tasks 1 to 5 do not need the creator app; Task 6 (submission README and demo script) is best finished after Lane C merges. Fund demo wallets by 2026-09-24 so DUST accrues. |
+
+C and D touch disjoint directories, so two people (or two agents) can run them in parallel. Two shared
+files to coordinate on: root `package.json` (Lane C adds `creator` to `workspaces`) and `README.md`
+(Lane D Task 6 rewrites it; until then keep the status line current).
+
+### How to pick up a lane
+
+1. `git switch -c lane-c main` (or `lane-d`). Do not work on `main`.
+2. Set up once: section 6. Confirm the baseline is green before changing anything:
+   `npm install && npm run check:runtime-copies && npm run compile -w contract && npm test`.
+3. Read the plan's **Global Constraints**, then execute it task by task. An agent should use
+   `superpowers:subagent-driven-development` (fresh implementer per task, a review after each task,
+   a whole-branch review at the end); a human can follow the same plan by hand. Every task ends with
+   tests green and a commit.
+4. When the final review is clean and every suite passes on the merged tree, merge to `main`, push,
+   and update the status rows in this file and the line in `README.md`.
+
+Things Lanes A and B learned that the C and D plan texts predate. Follow these over the plan where they differ:
+
+- **Vite 8, not 7.** The buyer runs on Vite 8; copy `buyer/vite.config.ts`, `buyer/scripts/copy-artifacts.mjs`,
+  `buyer/tsconfig.json`, and the way `buyer/src/main.tsx` imports the polyfills first, instead of retyping them.
+- **`connectContract(providers, address, secret, privateStateId, networkId)`** sets the midnight-js network id
+  itself; the network id comes from `GET /contract`. Calling `setNetworkId` beforehand is harmless but not
+  required.
+- **Fake mode is dev-only.** Gate it as the buyer does (`import.meta.env.DEV && VITE_FAKE_WALLET === '1'`) and
+  use `installFakeConnector()` from the shared package for the Playwright smoke, so a stray env var can never
+  short-circuit a production build.
+- **Ports.** Buyer dev server 5173, buyer Playwright smoke 5174. Lane D's port table still says "creator 5174":
+  use **5175 for the creator dev server and 5176 for its smoke**, and fix the table in Lane D Task 1.
+- **Key commitment** on-chain is `sha256(K_drop ‖ h_content)`, where `h_content = sha256(content blob)`.
+  Compute it exactly that way (the plans already do) or the indexer answers 409 on `POST /provision`.
+- **The dev indexer answers `quote_hex: "dev"`** on `GET /attest`. The creator app must refuse to provision
+  against it unless the explicit "dev mode: skip attestation" switch is on.
+- **The devnet compose file** currently lives at `spike/hello/docker-compose.yml`. Lane D Task 1 moves it to
+  `deploy/devnet/`; until then everyone starts the devnet from the spike path (section 7b).
+
+### Before you push
+
+- `npm test`, `npm run check:runtime-copies`, and the type-checks
+  (`npm run build -w indexer -w packages/midnight-web -w buyer`, plus your own package) pass on your branch.
+- No seeds, wallet secrets, wallet addresses, `.midnight-state.json`, or wallet state in the diff (section 9).
+- This file's status rows and the `README.md` status line still say the truth.
 
 ## 1. What this is
 
@@ -45,8 +110,8 @@ provisioning, dispatch-blob, and content-encryption code carries over from it.
 | Feasibility spike (local devnet) | **Passed 2026-09-05.** See section 5. |
 | Lane A: `contract/` + `indexer/` | **Merged to main 2026-09-05.** Compact contract (createDrop / purchase / withdraw with a content-bound key commitment), deploy/fund/ledger scripts, devnet flow test (6 cases); indexer with attestation, provisioning validation against the chain, watcher, dispatch, HTTP surface, Dockerfile; 62 unit tests, a devnet end-to-end test (real purchase → dispatched blob opens to the key), and a test against Phala's dstack simulator. Plan: `docs/superpowers/plans/2026-09-05-lane-a-contract-indexer.md`. |
 | Lane B: `packages/midnight-web` + `buyer/` | **Merged to main 2026-09-05.** Shared wallet package (DApp-connector discovery and connection, the official Lace adapter as midnight-js providers, `BlindfoldClient` over the compiled contract, fakes) and the buyer app (connect → catalog → buy with one shielded transaction → poll → trial-open → decrypt; recovery file; manual unlock; 24 h local persistence on by default; error hints). 14 + 25 unit tests, a Playwright smoke through a fake connector and mock indexer, and a real Lace purchase on the devnet that unlocked in ~20 s. Plan: `docs/superpowers/plans/2026-09-05-lane-b-buyer-app.md`. |
-| Lane C: `creator/` | Not started. Plan ready. |
-| Lane D: deploy, README, demo | Not started. Plan ready. `spike/` stays until Lane D's demo script replaces it. |
+| Lane C: `creator/` | **Open, recommended next.** Plan ready; see section 0. |
+| Lane D: deploy, README, demo | **Open.** Plan ready; see section 0. `spike/` stays until Lane D's demo script replaces it. |
 | Hackathon registration | Registration opened 2026-09-01: https://luma.com/2pnv2fwk |
 | Submission | Public GitHub repo with README, "how to run / demo flow", optional video, and a section on how Midnight is used. Judges clone, compile, and check that the README matches. Preview/Preprod testnet or local devnet are all allowed. |
 
@@ -185,7 +250,7 @@ cd spike/hello && npx tsx src/fund.ts <mn_addr…> <mn_shield-addr…> 1000   # 
 then press **Generate tDUST** in Lace and wait a few minutes. Addresses shown as `mn_addr1…` (no network
 segment) mean Lace is still on Mainnet.
 
-## 7b. Running what exists today (Lane A)
+## 7b. Running what exists today (Lanes A and B)
 
 ```bash
 export PATH="$HOME/.docker/bin:$HOME/.local/bin:$PATH"
@@ -202,7 +267,8 @@ docker build -f indexer/Dockerfile -t blindfold-indexer .                  # fro
 
 Buyer app against that indexer: `cd buyer && VITE_INDEXER_URL=http://127.0.0.1:8080 npm run dev` → http://127.0.0.1:5173
 (Lace on Undeployed with the local proof server). Without a wallet or chain: `VITE_FAKE_WALLET=1 npm run dev`
-(dev builds only). Tests: `npm test -w buyer`, `npm test -w packages/midnight-web`, `cd buyer && npm run test:e2e`.
+(dev builds only). Tests: `npm test -w buyer`, `npm test -w packages/midnight-web`, `cd buyer && npm run test:e2e`
+(the smoke starts its own fake-wallet server on 5174).
 Both apps set the midnight-js network id at session open from `GET /contract` and pass it to `connectContract`.
 
 Indexer HTTP surface (spec section 6): `GET /health`, `GET /contract`, `GET /attest`, `POST /provision`
@@ -239,16 +305,17 @@ demo seeder (Lane D) compute it exactly that way.
   Global Constraints, then execute task by task (an agent should use the `superpowers:executing-plans`
   or `superpowers:subagent-driven-development` skill):
 
-| Lane | Plan | Builds |
-|---|---|---|
-| A | `docs/superpowers/plans/2026-09-05-lane-a-contract-indexer.md` | `contract/` (Compact, deploy/flow scripts) and `indexer/` (TEE service, watcher, HTTP) |
-| B | `docs/superpowers/plans/2026-09-05-lane-b-buyer-app.md` | `packages/midnight-web/` (wallet + contract client, shared) and `buyer/` |
-| C | `docs/superpowers/plans/2026-09-05-lane-c-creator-app.md` | `creator/` |
-| D | `docs/superpowers/plans/2026-09-05-lane-d-deploy-demo.md` | devnet/Preprod/Phala runbooks, one-shot local demo, CI, submission README |
+| Lane | Plan | Builds | Status |
+|---|---|---|---|
+| A | `docs/superpowers/plans/2026-09-05-lane-a-contract-indexer.md` | `contract/` (Compact, deploy/flow scripts) and `indexer/` (TEE service, watcher, HTTP) | Merged 2026-09-05 |
+| B | `docs/superpowers/plans/2026-09-05-lane-b-buyer-app.md` | `packages/midnight-web/` (wallet + contract client, shared) and `buyer/` | Merged 2026-09-05 |
+| C | `docs/superpowers/plans/2026-09-05-lane-c-creator-app.md` | `creator/` | Open, recommended next (section 0) |
+| D | `docs/superpowers/plans/2026-09-05-lane-d-deploy-demo.md` | devnet/Preprod/Phala runbooks, one-shot local demo, CI, submission README | Open, can run in parallel with C |
 
 Cross-lane contracts are the wire formats in spec section 6 and the interfaces listed at the top of each
-task. Lanes B and C mock the indexer and the contract client (`MockDropApi`, `FakeBlindfoldClient`) so
-they can start on day one; Lane A Task 1 (the compiled contract) is the only thing every lane needs first.
+task. The fakes Lane C's plan relies on exist and are exported from `@blindfold/midnight-web`
+(`FakeBlindfoldClient`, `fakeConnectedWallet`, `installFakeConnector`); the buyer's in-process indexer
+stand-in is `buyer/src/mockApi.ts`.
 
 ## 11. Open decisions (resolved in the spec, listed for history)
 
