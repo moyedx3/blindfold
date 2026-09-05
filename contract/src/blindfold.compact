@@ -5,7 +5,7 @@ import CompactStandardLibrary;
 
 export ledger drops: Map<Uint<64>, Uint<128>>;               // dropId -> price in STAR
 export ledger dropOwner: Map<Uint<64>, Bytes<32>>;           // dropId -> creator dapp pubkey
-export ledger kCommit: Map<Uint<64>, Bytes<32>>;             // dropId -> sha256(K_drop), set by the creator app
+export ledger kCommit: Map<Uint<64>, Bytes<32>>;             // dropId -> sha256(K_drop || h_content), set by the creator app
 export ledger purchaseCount: Counter;
 export ledger purchases: Map<Uint<64>, Bytes<32>>;           // index -> buyer one-time X25519 pubkey
 export ledger purchaseDrop: Map<Uint<64>, Uint<64>>;         // index -> dropId
