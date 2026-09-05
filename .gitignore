@@ -22,3 +22,5 @@ spike/web/src/contract/compiled/
 .superpowers/
 # compiled contract package output (regenerate with `npm run compile -w contract`)
 contract/build/
+# buyer app's copy of the compiled contract artifacts (regenerate with `node buyer/scripts/copy-artifacts.mjs`)
+buyer/public/contract/
