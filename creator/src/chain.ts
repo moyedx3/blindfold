@@ -1,4 +1,4 @@
-import type { BlindfoldClient, LedgerView, TxRef } from "@blindfold/midnight-web";
+import type { BlindfoldClient, LedgerView, TxRef } from "@blindfold/midnight-web/contract";
 import { fromHex, sha256 } from "./bytes";
 
 function concat(parts: Uint8Array[]): Uint8Array {
