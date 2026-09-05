@@ -82,3 +82,8 @@ Lace setup for this test (user side): install Lace (Chrome), create a wallet, Se
 network Undeployed, proof server Local (http://localhost:6300). Fund it from genesis with
 `npx tsx src/fund.ts <mn_addr_undeployed1…> <mn_shield-addr_undeployed1…> 1000` in spike/hello, then press
 "Generate tDUST" in Lace and wait a few minutes.
+- 2026-09-05 run 3 (browser, Lace, separate wallet): funded a Lace wallet from genesis with `fund.ts`
+  (1000 NIGHT unshielded + 1000 shielded, block 378), user pressed Generate tDUST, then bought drop 1 from
+  `spike/web` -> `purchase` tx in block 513 in 37 s. Indexer: entryPoint `purchase`, 0 unshielded inputs/outputs,
+  3 zswap events, 1 dust event, raw tx contains none of the wallet's coin/encryption/unshielded public keys.
+  Ledger: `purchases[1]` = the page's ePub, `escrow[1]` = 1,000,000 STAR @ mt_index 34. Spike complete.
