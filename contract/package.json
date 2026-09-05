@@ -1,0 +1,43 @@
+{
+  "name": "@blindfold/contract",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./contract": "./build/blindfold/contract/index.js"
+  },
+  "scripts": {
+    "compile": "bash scripts/compile.sh",
+    "deploy": "tsx scripts/deploy.ts",
+    "fund": "tsx scripts/fund.ts",
+    "ledger": "tsx scripts/ledger.ts",
+    "test": "vitest run",
+    "test:devnet": "DEVNET=1 vitest run test/flow.test.ts"
+  },
+  "dependencies": {
+    "@midnight-ntwrk/compact-runtime": "0.16.0",
+    "@midnight-ntwrk/midnight-js-contracts": "4.1.1",
+    "@midnight-ntwrk/midnight-js-http-client-proof-provider": "4.1.1",
+    "@midnight-ntwrk/midnight-js-indexer-public-data-provider": "4.1.1",
+    "@midnight-ntwrk/midnight-js-level-private-state-provider": "4.1.1",
+    "@midnight-ntwrk/midnight-js-network-id": "4.1.1",
+    "@midnight-ntwrk/midnight-js-node-zk-config-provider": "4.1.1",
+    "@midnight-ntwrk/midnight-js-protocol": "4.1.1",
+    "@midnight-ntwrk/midnight-js-types": "4.1.1",
+    "@midnight-ntwrk/midnight-js-utils": "4.1.1",
+    "@midnight-ntwrk/wallet-sdk": "1.2.0",
+    "@midnight-ntwrk/wallet-sdk-address-format": "3.1.0",
+    "@scure/base": "^2.0.0",
+    "@scure/bip39": "2.2.0",
+    "rxjs": "^7.8.2",
+    "ws": "^8.21.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/ws": "^8.18.1",
+    "tsx": "^4.23.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.9"
+  },
+  "overrides": { "@midnight-ntwrk/onchain-runtime-v3": "3.0.0" }
+}

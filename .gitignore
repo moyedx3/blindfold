@@ -20,3 +20,5 @@ spike/web/src/contract/compiled/
 .worktrees/
 # subagent-driven-development scratch
 .superpowers/
+# compiled contract package output (regenerate with `npm run compile -w contract`)
+contract/build/
