@@ -1,0 +1,7 @@
+{
+  "sha256": { "input_hex": "", "output_hex": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" },
+  "blake2b256": { "input_hex": "616263", "output_hex": "bddd813c634239723171ef3fee98579b94964e3bb1cb3e427262c8c068d52319" },
+  "u64be": { "value": "1", "output_hex": "0000000000000001" },
+  "x25519": { "seed_hex": "0000000000000000000000000000000000000000000000000000000000000001",
+              "public_hex": "fd3384e132ad02a56c78f45547ee40038dc79002b90d29ed90e08eee762ae715" }
+}
