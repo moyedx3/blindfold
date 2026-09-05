@@ -14,3 +14,5 @@ dist/
 !.env.example
 # browser spike: regenerate by copying spike/hello/contracts/managed/blindfold after `compact compile`
 spike/web/src/contract/compiled/
+# midnight-js private-state store (local)
+**/midnight-level-db/
