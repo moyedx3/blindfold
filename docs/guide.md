@@ -43,7 +43,10 @@ provisioning, dispatch-blob, and content-encryption code carries over from it.
 | Item | State |
 |---|---|
 | Feasibility spike (local devnet) | **Passed 2026-09-05.** See section 5. |
-| Real repo structure, contract, apps | Not started. Next step is the design (spec) then an implementation plan. |
+| Lane A: `contract/` + `indexer/` | **Merged to main 2026-09-05.** Compact contract (createDrop / purchase / withdraw with a content-bound key commitment), deploy/fund/ledger scripts, devnet flow test (6 cases); indexer with attestation, provisioning validation against the chain, watcher, dispatch, HTTP surface, Dockerfile; 62 unit tests, a devnet end-to-end test (real purchase → dispatched blob opens to the key), and a test against Phala's dstack simulator. Plan: `docs/superpowers/plans/2026-09-05-lane-a-contract-indexer.md`. |
+| Lane B: `packages/midnight-web` + `buyer/` | Not started. Plan ready. |
+| Lane C: `creator/` | Not started. Plan ready. |
+| Lane D: deploy, README, demo | Not started. Plan ready. `spike/` stays until Lane D's demo script replaces it. |
 | Hackathon registration | Registration opened 2026-09-01: https://luma.com/2pnv2fwk |
 | Submission | Public GitHub repo with README, "how to run / demo flow", optional video, and a section on how Midnight is used. Judges clone, compile, and check that the README matches. Preview/Preprod testnet or local devnet are all allowed. |
 
@@ -181,6 +184,29 @@ cd spike/hello && npx tsx src/fund.ts <mn_addr…> <mn_shield-addr…> 1000   # 
 
 then press **Generate tDUST** in Lace and wait a few minutes. Addresses shown as `mn_addr1…` (no network
 segment) mean Lace is still on Mainnet.
+
+## 7b. Running what exists today (Lane A)
+
+```bash
+export PATH="$HOME/.docker/bin:$HOME/.local/bin:$PATH"
+npm install && npm run check:runtime-copies          # exactly one onchain-runtime copy
+npm run compile -w contract                          # Compact 0.31.1 -> contract/build/blindfold
+npm test -w indexer                                  # 62 unit tests (devnet/simulator cases skip)
+docker compose -f spike/hello/docker-compose.yml up -d --wait   # local devnet until Lane D lands deploy/devnet
+cd contract && DEVNET=1 npm run deploy               # prints CONTRACT_ADDRESS=...
+DEVNET=1 npm run test:devnet                         # 6-case contract flow test (~90 s)
+cd ../indexer && NETWORK=undeployed CONTRACT_ADDRESS=<addr> DEV_SEED_HEX=<64 hex> DATA_DIR=./data npm start
+DEVNET=1 CONTRACT_ADDRESS=<addr> npx vitest run test/e2e.devnet.test.ts   # end-to-end through HTTP + watcher
+docker build -f indexer/Dockerfile -t blindfold-indexer .                  # from the repo root
+```
+
+Indexer HTTP surface (spec section 6): `GET /health`, `GET /contract`, `GET /attest`, `POST /provision`
+(sealed payload, `application/octet-stream`), `GET /catalog`, `GET /dispatch`, `GET /dispatch/:key`,
+`GET /bucket/:key`, `PUT /bucket/:key` (key must equal `sha256(body)`). Bodies must be sent with
+`Content-Type: application/octet-stream` or Fastify answers 415.
+
+The key commitment stored on-chain is `sha256(K_drop ‖ h_content_bytes)`; the creator app (Lane C) and the
+demo seeder (Lane D) compute it exactly that way.
 
 ## 8. Gotchas (details in spike/NOTES.md)
 
