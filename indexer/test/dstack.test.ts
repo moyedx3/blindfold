@@ -36,4 +36,11 @@ describe('connectTee', () => {
     const tee = await connectTee({ client: throwing, devSeedHex: seedHex });
     expect(tee.isDev).toBe(true);
   });
+  it('falls back to DevTee when the client constructor throws', async () => {
+    const tee = await connectTee({ clientFactory: () => { throw new Error('no socket'); }, devSeedHex: seedHex });
+    expect(tee.isDev).toBe(true);
+  });
+  it('fails when the client constructor throws and no dev seed is set', async () => {
+    await expect(connectTee({ clientFactory: () => { throw new Error('no socket'); } })).rejects.toThrow(/unreachable/);
+  });
 });

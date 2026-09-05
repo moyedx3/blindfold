@@ -47,11 +47,15 @@ export class DevTee implements Tee {
   async measurement(): Promise<string> { return 'dev'; }
 }
 
-export async function connectTee(opts: { endpoint?: string; devSeedHex?: string; client?: DstackLike } = {}): Promise<Tee> {
-  const client: DstackLike = opts.client ?? (new DstackClient(opts.endpoint) as unknown as DstackLike);
-  const reachable = await client.isReachable().catch(() => false);
+export async function connectTee(opts: { endpoint?: string; devSeedHex?: string; client?: DstackLike; clientFactory?: (endpoint?: string) => DstackLike } = {}): Promise<Tee> {
+  let client: DstackLike | null = opts.client ?? null;
+  if (!client) {
+    const factory = opts.clientFactory ?? ((endpoint?: string) => new DstackClient(endpoint) as unknown as DstackLike);
+    try { client = factory(opts.endpoint); } catch { client = null; }
+  }
+  const reachable = client ? await client.isReachable().catch(() => false) : false;
   if (reachable && opts.devSeedHex) throw new Error('refusing to start: a dev seed is set but a real TEE is reachable');
-  if (reachable) return new DstackTee(client);
+  if (reachable && client) return new DstackTee(client);
   if (opts.devSeedHex) return new DevTee(opts.devSeedHex);
   throw new Error('dstack is unreachable and no DEV_SEED_HEX is set');
 }
