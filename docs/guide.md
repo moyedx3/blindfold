@@ -5,31 +5,38 @@
 
 ## 한 줄 요약 (KR)
 
-Blindfold는 Zcash 위에 만들었던 **Drop**(잠긴 콘텐츠를 프라이버시 결제로 여는 "눈 가린 우체부")을
-**Midnight**로 옮기는 프로젝트다. Midnight Korea Hackathon 2026 제출용이며, 마감은 **2026-09-28 00:00 KST**.
-2026-09-05에 로컬 devnet에서 핵심 스파이크를 통과했다: Compact 컨트랙트가 가격을 강제하고 구매자의 일회용 키를
+Blindfold는 잠긴 콘텐츠를 프라이버시 결제로 여는 "눈 가린 우체부"다. 크리에이터가 콘텐츠를 암호화해 올리고,
+구매자가 shielded NIGHT로 Compact 컨트랙트에 결제하면, 콘텐츠 키를 쥔 TEE 인덱서가 구매자의 일회용 키로 키를
+봉인해 전달한다. 팀이 이전에 만든 프로토타입(내부 이름 Drop)의 설계를 Midnight 위에 다시 만든 것이다.
+Midnight Korea Hackathon 2026 제출용이며, 마감은 **2026-09-28 00:00 KST**.
+2026-09-05에 로컬 devnet에서 핵심 스파이크를 통과했다: 컨트랙트가 가격을 강제하고 구매자의 일회용 키를
 원자적으로 기록하며, Lace 지갑에서 shielded NIGHT로 결제가 되고, 크리에이터가 에스크로된 코인을 회수한다.
 아래는 영어로 이어진다. 에이전트는 이 문서와 `spike/NOTES.md`를 먼저 읽는다.
 
 ## 1. What this is
 
-Drop (previous project, Zcash) sells unlockable content:
+Blindfold sells unlockable content with a private payment and a key handoff that nobody in the middle can read:
 
 1. The creator encrypts content in the browser with a fresh key `K_drop`, uploads only the ciphertext,
-   and seals `K_drop` to an indexer running inside a TEE (Intel TDX on Phala) after verifying its attestation.
-2. The buyer pays with a shielded transaction and attaches a fresh one-time public key `e_pub`.
-3. The indexer detects the payment, seals `K_drop` to `e_pub` (libsodium sealed box), and publishes the blob.
-   The buyer trial-opens blobs with `e_priv`, recovers `K_drop`, decrypts the content.
+   registers the drop on a Compact contract (price plus a commitment to `K_drop`), and seals `K_drop` to
+   an indexer running inside a TEE (Intel TDX on Phala Cloud) after verifying its attestation.
+2. The buyer pays shielded NIGHT through the contract's `purchase` circuit and passes a fresh one-time
+   public key `e_pub`. The circuit enforces the price and records `e_pub` on the public ledger atomically
+   with the payment.
+3. The indexer watches the ledger, seals `K_drop` to each new `e_pub` (libsodium sealed box), and
+   publishes the blob. The buyer trial-opens blobs with `e_priv`, recovers `K_drop`, decrypts the content.
 
-Drop's hard dependency on Zcash was the 512-byte **memo field**: the only in-band channel from an anonymous
-buyer to the indexer. Midnight has no memo field. It has something better for this job: a **Compact smart
-contract** whose circuit takes `e_pub` as an argument, enforces the price in-circuit, and writes `e_pub` to
-the public ledger atomically with the payment. Everything downstream of payment detection (TEE key
-custody, dispatch blobs, buyer polling, content encryption) stays as in Drop.
+**Why a contract.** The buyer must tell the indexer "I paid for drop X, answer to this key" without
+revealing who they are and without a pre-registration the server could correlate with the payment. A
+circuit argument written to the ledger does exactly that, and the contract, not a server, decides whether
+the payment was sufficient.
 
-**We keep the TEE.** The contract proves "this buyer paid", but somebody off-chain still has to hold
-`K_drop` and seal it to each `e_pub`. The TEE is what stops the operator of that somebody from reading the
-content. The team already understands this code, so it carries over.
+**Why a TEE anyway.** The ledger is public, so `K_drop` cannot live on-chain. Somebody off-chain has to
+hold it and answer purchases. The TEE is what stops that somebody's operator from reading the content.
+Buyer anonymity comes from Zswap and does not depend on the TEE; content confidentiality does.
+
+This is the second iteration of a design the team prototyped earlier (internal name "Drop"); the TEE
+provisioning, dispatch-blob, and content-encryption code carries over from it.
 
 ## 2. Status
 
@@ -67,32 +74,32 @@ Internal:
 - `spike/NOTES.md`: versions that work together, every gotcha hit, and the run logs.
 - `spike/hello/contracts/blindfold.compact`: the spike contract (throwaway, but the shape is right).
 - `spike/hello/src/blindfold.ts`: end-to-end CLI flow. `spike/web/src/App.tsx`: the browser buyer flow.
-- The previous project's design docs live in the private Drop repo (not on GitHub). Ask the owner. Do not copy its git history: it contains real Zcash viewing keys.
+- The earlier prototype's design docs live in a private repo (not on GitHub). Ask the owner. Do not copy its git history; it contains real keys.
 
 ## 4. Architecture (target)
 
-Drop's four Zcash dependencies and their Midnight replacements:
+Design choices:
 
-| Drop on Zcash | Blindfold on Midnight |
+| Need | Mechanism |
 |---|---|
-| Memo carries `drop_id ‖ e_pub` | Circuit `purchase(dropId, ePub, coin)`; `ePub` is `disclose()`d into a ledger `Map<Uint<64>, Bytes<32>>` |
-| Shielded pool hides the buyer | Zswap shielded NIGHT; the coin is `receiveShielded` into the contract |
-| Viewing key (UFVK) lets the indexer see payments | Not needed: the indexer reads the public `purchases` map through the Midnight indexer GraphQL |
-| ZIP-321 QR scanned by Zashi | DApp Connector v4 (`window.midnight.*`), `findDeployedContract(...).callTx.purchase(...)` |
+| Buyer tells the indexer where to send the key, anonymously | Circuit `purchase(dropId, ePub, coin)`; `ePub` is `disclose()`d into a ledger `Map<Uint<64>, Bytes<32>>` |
+| Buyer stays anonymous | Zswap shielded NIGHT; the coin is `receiveShielded` into the contract |
+| Indexer learns about payments without holding any creator key | It reads the public `purchases` map through the Midnight indexer GraphQL |
+| Wallet UX | DApp Connector v4 (`window.midnight.*`), `findDeployedContract(...).callTx.purchase(...)` |
 
 Flow:
 
 ```
 creator app   createDrop(dropId, price) on the contract          (wallet tx)
-              encrypt content with K_drop, upload ciphertext     (unchanged from Drop)
-              verify TEE attestation, seal {dropId, K_drop, h_content} to the enclave   (unchanged)
+              encrypt content with K_drop, upload ciphertext     (carried over)
+              verify TEE attestation, seal {dropId, K_drop, h_content} to the enclave   (carried over)
 
 buyer app     fresh X25519 keypair (e_pub, e_priv)
               purchase(dropId, e_pub, coin{value >= price, color = NIGHT})   via Lace / 1AM
                 -> contract: assert price, receiveShielded, purchases[i] = e_pub, escrow[i] = coin
 
 indexer(TEE)  watch purchases map -> for each new e_pub: crypto_box_seal(K_drop, e_pub) -> publish blob
-buyer app     poll blobs, trial-open with e_priv, sha256 check, AES-GCM decrypt      (unchanged)
+buyer app     poll blobs, trial-open with e_priv, sha256 check, AES-GCM decrypt      (carried over)
 
 creator       withdraw(i): contract sends the escrowed coin to the creator's own shielded key
 ```

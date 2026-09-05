@@ -15,7 +15,7 @@ Phase 1 delivers exactly Drop's feature set plus creator withdrawal:
 - The creator withdraws the escrowed NIGHT.
 
 Non-goals for phase 1: on-chain delivery of dispatch blobs, network-layer privacy (Tor), DRM, multiple
-creators per drop, refunds, any Zcash compatibility.
+creators per drop, refunds.
 
 ## 2. Roles and trust
 
@@ -27,7 +27,7 @@ creators per drop, refunds, any Zcash compatibility.
 | Contract | public ledger only | nothing |
 
 Buyer anonymity comes from Zswap and does not depend on the TEE. Content confidentiality against the
-indexer operator depends on the TEE. These are independent, as in Drop.
+indexer operator depends on the TEE. These are independent.
 
 ## 3. Architecture
 
@@ -128,8 +128,7 @@ export circuit withdraw(idx: Uint<64>): [] {
 Notes:
 - `commit` is computed off-chain by the creator app as `sha256(K_drop)` and stored as-is. The contract
   never sees `K_drop`. The indexer refuses a provisioning whose `sha256(k_drop)` differs from the
-  on-chain value, so only the holder of `K_drop` can provision a drop. This closes Drop's deferred
-  creator-binding gap (its N1/N2 findings).
+  on-chain value, so only the holder of `K_drop` can provision a drop, without any wallet signature.
 - `ownPublicKey()` is used only as the withdraw recipient, never for authorization (it is prover-claimed).
   Authorization is the `creatorSecret` witness hashed into `dropOwner`.
 - Every caller must supply a `creatorSecret` witness implementation; the buyer app supplies random bytes
@@ -140,16 +139,16 @@ Notes:
 
 ## 6. Wire formats (interfaces)
 
-Numbering follows Drop's `interfaces.md` so the ported code keeps its comments meaningful.
+Interfaces are numbered I1 to I6; ported code comments reference these numbers.
 
 **I1 purchase call (buyer → contract).** Circuit arguments: `dropId: bigint`, `ePub: Uint8Array(32)`
 (libsodium `crypto_box_keypair` public key, fresh per purchase), `coin = { nonce: random 32 bytes,
 color: 32 zero bytes (NIGHT), value: price }`. The wallet balances the shielded input.
 
 **I2 dispatch blob (indexer → buyer).** `crypto_box_seal(K_drop, ePub)` = `ek_pub(32) ‖ ciphertext+MAC(48)`
-= 80 bytes, byte-identical to Drop. Store key: `hex(blake2b-256(ek_pub ‖ index_be64))` where `index` is
+= 80 bytes. Store key: `hex(blake2b-256(ek_pub ‖ index_be64))` where `index` is
 the purchase index as 8 big-endian bytes. The buyer cannot compute the key (needs `ek_pub`), so it lists
-and trial-opens, as in Drop. `GET /dispatch` returns the list of keys (JSON array of hex strings),
+and trial-opens. `GET /dispatch` returns the list of keys (JSON array of hex strings),
 `GET /dispatch/:key` returns the 80 bytes.
 
 **I3 catalog.** Public entry (`GET /catalog`, JSON array):
@@ -157,7 +156,7 @@ and trial-opens, as in Drop. `GET /dispatch` returns the list of keys (JSON arra
 Internal drop config (enclave memory only): `{ price_star, k_drop(32 bytes), h_content, title }`.
 `GET /contract` returns `{ "network": "preprod", "contract_address": "<64 hex>" }`.
 
-**I4 content blob (creator → buyer via bucket).** Unchanged from Drop: `nonce(12) ‖ AES-256-GCM
+**I4 content blob (creator → buyer via bucket).** `nonce(12) ‖ AES-256-GCM
 ciphertext ‖ tag(16)`, no AAD, `h_content = sha256(blob)` hex, `PUT /bucket/{h_content}` (the server
 verifies the hash), `GET /bucket/{h_content}`. Size limit 50 MB.
 
@@ -172,8 +171,8 @@ or content missing, 409 price or commitment mismatch.
 **I6 attestation (indexer → creator).** `GET /attest` → `{ "quote_hex": "...",
 "provisioning_pubkey_hex": "<64 hex>" }`, where the TDX quote's `report_data[0:32] = sha256(pubkey)`.
 The creator app verifies with `@phala/dcap-qvl` (Intel chain, TCB `UpToDate`), checks the pinned
-measurement, checks the binding, and only then obtains the pubkey, exactly as Drop
-(`creator/src/attestation.ts` is ported unchanged).
+measurement, checks the binding, and only then obtains the pubkey
+(`creator/src/attestation.ts`, carried over from the earlier prototype unchanged).
 
 ## 7. Indexer
 
@@ -186,8 +185,7 @@ Modules:
   (64 hex; dev only), `DATA_DIR`, `PORT` (8080), `POLL_MS` (3000), `MEASUREMENT_PIN` (documentation only).
 - `dstack.ts`: wraps `@phala/dstack-sdk` `DstackClient`: `getKey('blindfold/provisioning')`, `getQuote(reportData)`,
   `info()`. If the socket is unreachable and `DEV_SEED_HEX` is set, use the dev seed and a fake quote
-  (`quote_hex = "dev"`); if the socket is reachable and `DEV_SEED_HEX` is set, refuse to start
-  (Drop rule 1c0d428).
+  (`quote_hex = "dev"`); if the socket is reachable and `DEV_SEED_HEX` is set, refuse to start.
 - `keys.ts`: provisioning keypair from the 32-byte seed with libsodium `crypto_scalarmult_base`
   (the seed is the X25519 secret key, matching Drop's `from_secret_key`); `sha256`, `blake2b256` helpers.
 - `chain.ts`: midnight-js `indexerPublicDataProvider`, `queryContractState`, compiled contract
@@ -208,11 +206,11 @@ Modules:
   contract address has no state), server, watcher.
 
 Logging never prints `k_drop`, the seed, or the secret key. Provisioned configs live only in memory:
-after a redeploy creators re-provision (Drop's C4 rule; documented for creators in the app).
+after a redeploy creators re-provision (idempotent per drop; the creator app says so).
 
 ## 8. Buyer app
 
-Port of `week7/drop/buyer` minus `zip321.ts`, `memo.ts`, and the QR step. Kept: `seal.ts`, `poller.ts`,
+Port of the earlier prototype's buyer app minus its payment-request and QR modules. Kept: `seal.ts`, `poller.ts`,
 `content.ts`, `persist.ts`, `purchase.ts` (fields: `dropId, title, priceStar, hContent, ePub, ePriv,
 txId?`), `api.ts` (+ `fetchContract()`), the XP-themed UI.
 
@@ -234,11 +232,11 @@ at build time from `contract/build/`.
 
 ## 9. Creator app
 
-Port of `week7/drop/creator`. Kept unchanged: `content.ts` (AES-256-GCM, `h_content`), `attestation.ts`
-and `qvl-verifier.ts` (three-step quote verification), `price.ts` (NIGHT → STAR instead of ZEC → zat).
+Port of the earlier prototype's creator app. Kept unchanged: `content.ts` (AES-256-GCM, `h_content`), `attestation.ts`
+and `qvl-verifier.ts` (three-step quote verification), `price.ts` (NIGHT → STAR).
 
 Changed:
-- `provision.ts`: payload per I5 (no viewing key, no deposit address, `price_star`, `title`).
+- `provision.ts`: payload per I5 (`drop_id`, `price_star`, `k_drop`, `h_content`, `title`).
 - New `wallet.ts` / `contract.ts` (shared code with the buyer app via a small `packages/midnight-web`
   workspace if convenient, otherwise duplicated): `createDrop(dropId, price, commit)` and `withdraw(idx)`
   with the real `creatorSecret` witness.
@@ -272,8 +270,8 @@ Changed:
   blob key format, provisioning rejects (bad seal, price mismatch, commitment mismatch, missing content),
   watcher resumes from `dispatched.json`, dev-seed refusal when dstack is reachable. One integration test
   against the local devnet and the dstack simulator.
-- Apps: unit tests carried over from Drop (seal, content, persist, price, provision, attestation);
-  a Playwright smoke per app against the local stack with a mocked wallet connector.
+- Apps: unit tests carried over from the earlier prototype (seal, content, persist, price, provision,
+  attestation); a Playwright smoke per app against the local stack with a mocked wallet connector.
 - Cross-implementation vectors: the 80-byte dispatch blob opens with the buyer's libsodium; the sealed
   provisioning payload opens in the indexer; `blake2b256` and `sha256` vectors shared between apps and
   indexer in `docs/vectors.json`.
@@ -291,7 +289,7 @@ Four lanes, two weeks (2026-09-08 to 2026-09-22), then polish and submission by 
 
 Order inside lane A: contract package and flow test first (day 1-2, mostly moving the spike), then the
 indexer core (attest, provision, catalog, bucket, engine) which lanes B and C can mock from I2-I6, then
-the watcher, then the Phala run. Lanes B and C start from the mocked API on day 1 as Drop did.
+the watcher, then the Phala run. Lanes B and C start from the mocked API on day 1.
 
 ## 13. Open items (decide during implementation, not blocking)
 
