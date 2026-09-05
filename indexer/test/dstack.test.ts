@@ -31,4 +31,9 @@ describe('connectTee', () => {
   it('DevTee rejects a non-32-byte seed', () => {
     expect(() => new DevTee('abcd')).toThrow(/64 hex/);
   });
+  it('treats a throwing isReachable as unreachable', async () => {
+    const throwing = { ...fake(false), isReachable: async () => { throw new Error('network down'); } };
+    const tee = await connectTee({ client: throwing, devSeedHex: seedHex });
+    expect(tee.isDev).toBe(true);
+  });
 });
