@@ -52,4 +52,32 @@ describe('Watcher', () => {
     catalog.upsert({ dropId: 2n, priceStar: 5n, kDrop: new Uint8Array(32).fill(3), hContent: 'bb'.repeat(32), title: 'u' });
     expect(await w.tick()).toEqual({ dispatched: 1, pending: 0 });
   });
+  it('start/stop halts polling even with a tick in flight', async () => {
+    const { store, engine } = setup();
+    const inner = new StaticLedgerReader(snap([[0n, 1n]]));
+    let reads = 0;
+    const reader = { read: async () => { reads++; return inner.read(); } };
+    const w = new Watcher({ reader, engine, store });
+    w.start(10);
+    await new Promise((r) => setTimeout(r, 60));
+    w.stop();
+    const readsAtStop = reads;
+    await new Promise((r) => setTimeout(r, 60));
+    expect(reads).toBeLessThanOrEqual(readsAtStop + 1);
+    expect(() => w.stop()).not.toThrow();
+  });
+  it('a failing dispatch does not lose earlier progress', async () => {
+    const { catalog, bucket, store } = setup();
+    const reader = new StaticLedgerReader(snap([[0n, 1n], [1n, 1n]]));
+    const failingEngine = { dispatch: async (i: bigint) => { if (i === 1n) throw new Error('boom'); return { key: 'k' + i }; } } as any;
+    await new Watcher({ reader, engine: failingEngine, store }).tick();
+    const state = await store.load();
+    expect(state.dispatched['0']).toBe('k0');
+    expect(state.dispatched['1']).toBeUndefined();
+
+    const fixedEngine = new Engine(catalog, bucket);
+    expect(await new Watcher({ reader, engine: fixedEngine, store }).tick()).toEqual({ dispatched: 1, pending: 0 });
+    const state2 = await store.load();
+    expect(state2.dispatched['1']).toBeDefined();
+  });
 });
