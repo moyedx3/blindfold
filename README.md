@@ -7,4 +7,4 @@ A creator encrypts content in the browser and hands the key only to an attested 
 shielded NIGHT through a Compact contract that enforces the price and records the buyer's one-time public
 key atomically. The TEE seals the content key to that one-time key and publishes it. Nobody learns who bought.
 
-Status (2026-09-05): the contract and the TEE-side indexer are merged with devnet end-to-end tests; the buyer app, creator app, and deployment lanes are next. See [`docs/guide.md`](docs/guide.md) for status, setup, and the per-lane plans.
+Status (2026-09-05): the contract, the TEE-side indexer, and the buyer app (with the shared wallet package) are merged, with devnet end-to-end tests and a real Lace purchase on the local devnet; the creator app and deployment lanes are next. See [`docs/guide.md`](docs/guide.md) for status, setup, and the per-lane plans.
