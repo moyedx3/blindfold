@@ -1,9 +1,11 @@
-// Opt-in local persistence of the active purchase so a tab close / refresh doesn't forfeit it.
-// Stores the recovery payload (which includes e_priv — a bearer token for this
-// one purchase) in localStorage with a 24h TTL. Guarded so it no-ops outside a browser (tests/node).
+// Local persistence, on by default (the buyer can turn it off in the UI), of the active purchase
+// so a tab close / refresh doesn't forfeit it. Stores the recovery payload (which includes
+// e_priv — a bearer token for this one purchase) in localStorage with a 24h TTL. Guarded so it
+// no-ops outside a browser (tests/node).
 //
 // Security: this is the same exposure as the downloadable recovery file — e_priv sits on the
-// device. It is opt-in and the UI warns about it. Cleared on unlock / cancel.
+// device. It is on by default, shown as a checkbox, and the UI warns about it. Cleared on
+// unlock / cancel.
 
 import type { Purchase } from "./purchase";
 import { fromRecoveryFile, toRecoveryFile } from "./purchase";
