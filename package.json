@@ -2,7 +2,7 @@
   "name": "blindfold",
   "private": true,
   "type": "module",
-  "workspaces": ["contract", "indexer", "packages/*", "buyer"],
+  "workspaces": ["contract", "indexer", "packages/*", "buyer", "creator"],
   "scripts": {
     "compile": "npm run compile -w contract",
     "test": "npm test --workspaces --if-present",
