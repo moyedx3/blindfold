@@ -36,9 +36,8 @@ describe.skipIf(!process.env.DEVNET)('MidnightLedgerReader (devnet)', () => {
     const r = new MidnightLedgerReader({ indexerUrl: 'http://127.0.0.1:8088/api/v4/graphql', indexerWsUrl: 'ws://127.0.0.1:8088/api/v4/graphql/ws', contractAddress: 'ab'.repeat(32), networkId: 'undeployed' });
     await expect(r.read()).rejects.toBeInstanceOf(ContractNotFound);
   });
-  it('reads a deployed contract when CONTRACT_ADDRESS is set', async () => {
-    const address = process.env.CONTRACT_ADDRESS;
-    if (!address) return;
+  it.skipIf(!process.env.CONTRACT_ADDRESS)('reads a deployed contract when CONTRACT_ADDRESS is set', async () => {
+    const address = process.env.CONTRACT_ADDRESS!;
     const r = new MidnightLedgerReader({ indexerUrl: 'http://127.0.0.1:8088/api/v4/graphql', indexerWsUrl: 'ws://127.0.0.1:8088/api/v4/graphql/ws', contractAddress: address, networkId: 'undeployed' });
     const s = await r.read();
     expect(typeof s.purchaseCount).toBe('bigint');
