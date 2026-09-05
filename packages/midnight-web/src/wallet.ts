@@ -29,7 +29,7 @@ export async function connectWallet(networkId: string, choice: WalletChoice): Pr
   const sh = await api.getShieldedAddresses();
   return {
     name: choice.name, api, networkId: cfg.networkId,
-    indexerUri: cfg.indexerUri, indexerWsUri: cfg.indexerWsUri, proverServerUri: (cfg as any).proverServerUri,
+    indexerUri: cfg.indexerUri, indexerWsUri: cfg.indexerWsUri, proverServerUri: cfg.proverServerUri,
     shieldedAddress: sh.shieldedAddress, coinPublicKey: sh.shieldedCoinPublicKey, encryptionPublicKey: sh.shieldedEncryptionPublicKey,
   };
 }
