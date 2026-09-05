@@ -57,3 +57,28 @@ and proven by a run carries into the real repo.
     Merkle index handled by `Map.insertCoin` + `sendShielded`) YES; Q3 (watcher reads `purchases` via
     `publicDataProvider.queryContractState` + generated `ledger()` decoder, iterable Map) YES.
   - Still open: browser wallet (Lace) path from a *separate* buyer wallet, and the privacy check on a public explorer.
+
+## Privacy check on the local indexer (2026-09-05)
+
+Queried the three spike transactions through the indexer GraphQL (`transactions(offset:{identifier})`;
+note: midnight-js `tx.public.txId` is the 34-byte *identifier*, not the 32-byte hash).
+- `purchase`: contractActions = [{address, entryPoint: "purchase"}], unshieldedSpentOutputs = 0,
+  unshieldedCreatedOutputs = 0, zswapLedgerEvents = 3, dustLedgerEvents = 1. The raw tx bytes do not
+  contain the buyer wallet's coin public key or encryption public key.
+- Same shape for `createDrop` (0 zswap events) and `withdraw` (2 zswap events).
+So on-chain a purchase reveals: the contract address, the circuit name, the disclosed args
+(drop_id, one-time ePub, coin value), Zswap nullifier/commitments, and a DUST spend. No wallet address.
+
+## Browser half (spike/web)
+
+`spike/web` is the official `midnightntwrk/midnight-wallet-dapp` Vite/React wiring (polyfills, crypto shim,
+Lace `balanceUnsealedTransaction` adapter, FetchZkConfigProvider) with the blindfold contract swapped in and
+one screen: connect wallet on `undeployed` -> read ledger -> "Buy drop N with shielded NIGHT" ->
+`findDeployedContract(...).callTx.purchase(dropId, ePub, coin)` -> re-read ledger and confirm ePub.
+Run: `cd spike/web && npm install && npm run dev` (needs `src/contract/compiled/blindfold` copied from
+`spike/hello/contracts/managed/blindfold`). Type-checks and builds clean as of 2026-09-05.
+
+Lace setup for this test (user side): install Lace (Chrome), create a wallet, Settings -> Midnight ->
+network Undeployed, proof server Local (http://localhost:6300). Fund it from genesis with
+`npx tsx src/fund.ts <mn_addr_undeployed1…> <mn_shield-addr_undeployed1…> 1000` in spike/hello, then press
+"Generate tDUST" in Lace and wait a few minutes.

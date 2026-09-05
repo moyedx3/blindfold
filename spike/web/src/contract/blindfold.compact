@@ -1,0 +1,54 @@
+// Blindfold spike contract (THROWAWAY): payment gate for unlockable drops.
+//
+// Replaces Drop's Zcash memo trick. A buyer calls `purchase` with a fresh
+// one-time public key `ePub`; the circuit enforces the price, escrows the
+// shielded coin inside the contract, and records `ePub` on the public ledger.
+// The off-chain indexer (TEE) reads `purchases` and seals K_drop to `ePub`.
+pragma language_version 0.23;
+import CompactStandardLibrary;
+
+// drop_id -> price in STAR (1 NIGHT = 10^6 STAR)
+export ledger drops: Map<Uint<64>, Uint<128>>;
+// drop_id -> creator's dapp-specific public key (hash of a secret witness)
+export ledger dropOwner: Map<Uint<64>, Bytes<32>>;
+// next purchase index
+export ledger purchaseCount: Counter;
+// purchase index -> buyer one-time public key (X25519, 32 bytes)
+export ledger purchases: Map<Uint<64>, Bytes<32>>;
+// purchase index -> drop_id
+export ledger purchaseDrop: Map<Uint<64>, Uint<64>>;
+// purchase index -> escrowed coin (contract-owned, spendable by withdraw)
+export ledger escrow: Map<Uint<64>, QualifiedShieldedCoinInfo>;
+
+witness creatorSecret(): Bytes<32>;
+
+circuit creatorPk(sk: Bytes<32>): Bytes<32> {
+  return persistentHash<Vector<2, Bytes<32>>>([pad(32, "blindfold:creator:"), sk]);
+}
+
+export circuit createDrop(dropId: Uint<64>, price: Uint<128>): [] {
+  assert(!drops.member(disclose(dropId)), "drop already exists");
+  drops.insert(disclose(dropId), disclose(price));
+  dropOwner.insert(disclose(dropId), disclose(creatorPk(creatorSecret())));
+}
+
+export circuit purchase(dropId: Uint<64>, ePub: Bytes<32>, coin: ShieldedCoinInfo): [] {
+  assert(drops.member(disclose(dropId)), "unknown drop");
+  assert(coin.color == nativeToken(), "must pay in NIGHT");
+  assert(coin.value >= drops.lookup(disclose(dropId)), "underpaid");
+  receiveShielded(disclose(coin));
+  const idx = purchaseCount.read();
+  purchases.insert(idx, disclose(ePub));
+  purchaseDrop.insert(idx, disclose(dropId));
+  escrow.insertCoin(idx, disclose(coin), right<ZswapCoinPublicKey, ContractAddress>(kernel.self()));
+  purchaseCount.increment(1);
+}
+
+export circuit withdraw(idx: Uint<64>): [] {
+  assert(escrow.member(disclose(idx)), "nothing escrowed");
+  const dropId = purchaseDrop.lookup(disclose(idx));
+  assert(dropOwner.lookup(dropId) == creatorPk(creatorSecret()), "not the creator");
+  const coin = escrow.lookup(disclose(idx));
+  sendShielded(coin, left<ZswapCoinPublicKey, ContractAddress>(ownPublicKey()), coin.value);
+  escrow.remove(disclose(idx));
+}
