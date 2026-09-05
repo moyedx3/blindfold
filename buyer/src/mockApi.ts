@@ -1,6 +1,6 @@
 import sodium from 'libsodium-wrappers';
 import type { CatalogEntry, ContractInfo, DropApi } from './api';
-import { concatBytes, sha256Hex, toHex } from './bytes';
+import { concatBytes, toHex } from './bytes';
 import { encryptContent } from './content';
 import { sealTo } from './seal';
 
@@ -30,4 +30,17 @@ export class MockDropApi implements DropApi {
   async listDispatch(): Promise<string[]> { return [...this.dispatch.keys()]; }
   async getDispatch(key: string): Promise<Uint8Array> { const b = this.dispatch.get(key); if (!b) throw new Error('404'); return b; }
   async getContent(h: string): Promise<Uint8Array> { const b = this.content.get(h); if (!b) throw new Error('404'); return b; }
+
+  /**
+   * Test-only: overwrite the stored content bytes for `hContent` without changing the map key,
+   * so a later `getContent(hContent)` returns bytes that no longer hash to `hContent`. Used to
+   * exercise the poller's "content hash mismatch" guard (poller.ts).
+   */
+  corruptContent(hContent: string): void {
+    const existing = this.content.get(hContent);
+    if (!existing) throw new Error(`no content stored for ${hContent}`);
+    const corrupted = new Uint8Array(existing);
+    corrupted[0] ^= 0xff;
+    this.content.set(hContent, corrupted);
+  }
 }

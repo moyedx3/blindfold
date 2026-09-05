@@ -18,6 +18,7 @@
 - Contract: `createDrop(dropId: bigint, price: bigint /* STAR */, commit: Uint8Array /* sha256(K_drop ‖ h_content) */)`, `withdraw(idx: bigint)`. `1 NIGHT = 1_000_000 STAR`; prices are entered in NIGHT with up to 6 decimals and must be > 0.
 - The dev indexer answers `quote_hex: "dev"`; the app must offer an explicit "dev mode: skip attestation" switch (default off) for the local devnet, and refuse to provision on `quote_hex === "dev"` unless that switch is on.
 - Never log or persist wallet keys or `K_drop` beyond the in-memory flow. The creator secret is stored under localStorage key `blindfold-creator-secret` as hex, and its export file has version `blindfold-creator-secret-1`.
+- `openSession` must set the midnight-js network id from `GET /contract` before building providers (Lane B ruling B12).
 - Tests: vitest (jsdom) for modules, Playwright for the smoke. Commit after every task.
 
 ---
@@ -438,7 +439,7 @@ export function escrowForDrops(view: LedgerView, dropIds: number[]): Array<{ ind
 - [ ] **Step 1: `creator/src/session.ts`**
 
 ```ts
-import { buildProviders, connectContract, connectWallet, fakeConnectedWallet, FakeBlindfoldClient, listWallets, type BlindfoldClient, type ConnectedWallet, type WalletChoice } from '@blindfold/midnight-web';
+import { buildProviders, connectContract, connectWallet, fakeConnectedWallet, FakeBlindfoldClient, listWallets, setNetworkId, type BlindfoldClient, type ConnectedWallet, type WalletChoice } from '@blindfold/midnight-web';
 import { fetchContract } from './api';
 import { loadOrCreateSecret } from './secret';
 
@@ -448,12 +449,13 @@ export function availableWallets(): WalletChoice[] { return FAKE ? [{ key: 'fake
 
 export async function openSession(indexerUrl: string, choice: WalletChoice): Promise<Session> {
   const info = await fetchContract(indexerUrl);
+  setNetworkId(info.network);
   const secret = loadOrCreateSecret();
   if (FAKE) return { wallet: fakeConnectedWallet(), client: new FakeBlindfoldClient(), contractAddress: info.contract_address, network: info.network };
   const wallet = await connectWallet(info.network, choice);
   if (wallet.networkId !== info.network) throw new Error(`wallet is on ${wallet.networkId}, the contract lives on ${info.network}. Switch the wallet network.`);
   const providers = await buildProviders(wallet, { zkAssetsUrl: `${window.location.origin}/contract/blindfold`, storeName: 'blindfold-creator', proofServerFallback: import.meta.env.VITE_PROOF_SERVER_URL ?? 'http://localhost:6300' });
-  const client = await connectContract(providers, info.contract_address, secret, `blindfold-creator-${info.contract_address.slice(0, 8)}`);
+  const client = await connectContract(providers, info.contract_address, secret, `blindfold-creator-${info.contract_address.slice(0, 8)}`, info.network);
   return { wallet, client, contractAddress: info.contract_address, network: info.network };
 }
 ```

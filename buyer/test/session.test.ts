@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { WalletChoice } from '@blindfold/midnight-web';
 import { MockDropApi } from '../src/mockApi';
 
@@ -10,21 +10,31 @@ afterEach(() => {
 });
 
 describe('openSession (FAKE mode)', () => {
-  it("sets midnight-js's network id from the mock indexer's /contract", async () => {
+  beforeEach(() => {
     vi.stubEnv('VITE_FAKE_WALLET', '1');
+  });
+
+  it('sets midnight-js\'s network id from the mock indexer\'s /contract, and uses the real connectWallet path', async () => {
     vi.resetModules();
-    const { getNetworkId } = await import('@blindfold/midnight-web');
+    const { installFakeConnector, getNetworkId, listWallets } = await import('@blindfold/midnight-web');
     const { openSession } = await import('../src/session');
+
+    installFakeConnector();
+    const [choice] = listWallets();
+    expect(choice.name).toBe('Fake wallet (no chain)');
 
     const api = new MockDropApi();
     await api.seedDrop({ drop_id: 1, price_star: '1000000', title: 'demo', h_content: '' }, new TextEncoder().encode('hi'));
 
-    const session = await openSession(api, { key: 'fake', name: 'fake', apiVersion: '0', api: {} as any });
+    const session = await openSession(api, choice);
 
     // MockDropApi.fetchContract() reports network: 'undeployed' — confirm setNetworkId ran with it.
     expect(getNetworkId()).toBe('undeployed');
     expect(session.network).toBe('undeployed');
     expect(session.contractAddress).toBe(api.contractAddress);
+    // Went through the real connectWallet() path (not the old fakeConnectedWallet() shortcut):
+    // the wallet's name comes from the injected connector, not a hardcoded 'fake'.
+    expect(session.wallet.name).toBe('Fake wallet (no chain)');
   });
 });
 

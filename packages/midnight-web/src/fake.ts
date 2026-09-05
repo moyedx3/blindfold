@@ -47,3 +47,25 @@ export function fakeConnectedWallet(): ConnectedWallet {
   };
   return { name: 'fake', api, networkId: 'undeployed', indexerUri: 'http://fake', indexerWsUri: 'ws://fake', shieldedAddress: 'mn_shield-addr_undeployed1fake', coinPublicKey: '00'.repeat(32), encryptionPublicKey: '00'.repeat(32) };
 }
+
+/**
+ * Injects a `window.midnight.fake` connector so the app's real `listWallets()` /
+ * `connectWallet()` path (dapp-connector-api shape) can pick up a fake wallet in the browser,
+ * instead of the app special-casing FAKE mode around a hand-built `ConnectedWallet`. Lets the
+ * fake-wallet dev/test flow exercise the same wallet-discovery and wallet-connect code a real
+ * wallet extension would go through.
+ */
+export function installFakeConnector(win: { midnight?: Record<string, unknown> } = globalThis as any): void {
+  const fakeConnectedApi = {
+    getConfiguration: async () => ({ networkId: 'undeployed', indexerUri: 'http://fake', indexerWsUri: 'ws://fake' }),
+    getShieldedAddresses: async () => ({ shieldedAddress: 'mn_shield-addr_undeployed1fake', shieldedCoinPublicKey: '00'.repeat(32), shieldedEncryptionPublicKey: '00'.repeat(32) }),
+    getShieldedBalances: async () => ({ ['0'.repeat(64)]: 1_000_000_000n }),
+    getUnshieldedBalances: async () => ({ ['0'.repeat(64)]: 1_000_000_000n }),
+    getDustBalance: async () => ({ balance: 10n ** 18n, cap: 10n ** 19n }),
+    getConnectionStatus: async () => ({ status: 'connected' }),
+  };
+  win.midnight = {
+    ...win.midnight,
+    fake: { name: 'Fake wallet (no chain)', icon: 'data:,', apiVersion: '4.0.1', rdns: 'dev.blindfold.fake', connect: async () => fakeConnectedApi },
+  };
+}
