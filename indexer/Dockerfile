@@ -5,9 +5,8 @@ COPY contract/package.json contract/package.json
 COPY indexer/package.json indexer/package.json
 RUN npm ci --workspace contract --workspace indexer --include-workspace-root
 COPY contract/build contract/build
-COPY contract/scripts contract/scripts
 COPY indexer indexer
-RUN cd indexer && npx tsc --noEmit
+RUN cd indexer && npx tsc --noEmit -p tsconfig.build.json
 
 FROM node:22-bookworm-slim
 WORKDIR /app
