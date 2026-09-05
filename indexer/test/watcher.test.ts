@@ -62,6 +62,7 @@ describe('Watcher', () => {
     await new Promise((r) => setTimeout(r, 60));
     w.stop();
     const readsAtStop = reads;
+    expect(readsAtStop).toBeGreaterThan(0);
     await new Promise((r) => setTimeout(r, 60));
     expect(reads).toBeLessThanOrEqual(readsAtStop + 1);
     expect(() => w.stop()).not.toThrow();
@@ -82,7 +83,7 @@ describe('Watcher', () => {
   });
   it('a stale pending entry for an already-dispatched index is not re-dispatched', async () => {
     const { store } = setup();
-    await store.save({ dispatched: { '0': 'k0' }, pending: ['0'] });
+    await store.save({ dispatched: { '0': 'k0' }, pending: ['0'], failures: {} });
     const calls: bigint[] = [];
     const countingEngine = { dispatch: async (i: bigint) => { calls.push(i); return { key: 'should-not-happen' }; } } as any;
     const reader = new StaticLedgerReader(snap([[0n, 1n]]));
@@ -92,5 +93,24 @@ describe('Watcher', () => {
     const state = await store.load();
     expect(state.dispatched['0']).toBe('k0');
     expect(state.pending).toEqual([]);
+  });
+  it('a purchase that always fails is poisoned after 3 failures and then skipped', async () => {
+    const { store } = setup();
+    const reader = new StaticLedgerReader(snap([[0n, 1n]]));
+    const calls: bigint[] = [];
+    const alwaysFailingEngine = { dispatch: async (i: bigint) => { calls.push(i); throw new Error('boom'); } } as any;
+    for (let n = 0; n < 3; n++) {
+      await new Watcher({ reader, engine: alwaysFailingEngine, store }).tick();
+    }
+    expect(calls).toEqual([0n, 0n, 0n]);
+    const state = await store.load();
+    expect(state.failures['0']).toBe(3);
+
+    calls.length = 0;
+    const result = await new Watcher({ reader, engine: alwaysFailingEngine, store }).tick();
+    expect(calls).toEqual([]);
+    expect(result).toEqual({ dispatched: 0, pending: 0 });
+    const state2 = await store.load();
+    expect(state2.failures['0']).toBe(3);
   });
 });

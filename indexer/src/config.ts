@@ -16,6 +16,14 @@ const DEFAULTS: Record<Config['network'], { indexerUrl: string; indexerWsUrl: st
   preprod: { indexerUrl: 'https://indexer.preprod.midnight.network/api/v4/graphql', indexerWsUrl: 'wss://indexer.preprod.midnight.network/api/v4/graphql/ws' },
 };
 
+function positiveIntEnv(env: NodeJS.ProcessEnv, key: string, fallback: number): number {
+  const raw = env[key];
+  if (raw === undefined) return fallback;
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n <= 0) throw new Error(`${key} must be a positive integer, got ${raw}`);
+  return n;
+}
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const network = (env.NETWORK ?? 'undeployed') as Config['network'];
   if (!(network in DEFAULTS)) throw new Error(`NETWORK must be undeployed|preview|preprod, got ${network}`);
@@ -28,7 +36,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     dstackEndpoint: env.DSTACK_ENDPOINT,
     devSeedHex: env.DEV_SEED_HEX,
     dataDir: env.DATA_DIR ?? './data',
-    port: Number(env.PORT ?? 8080),
-    pollMs: Number(env.POLL_MS ?? 3000),
+    port: positiveIntEnv(env, 'PORT', 8080),
+    pollMs: positiveIntEnv(env, 'POLL_MS', 3000),
   };
 }

@@ -17,6 +17,11 @@ const tee = await connectTee({ endpoint: cfg.dstackEndpoint, devSeedHex: cfg.dev
 log(`tee: ${tee.isDev ? 'DEV (no attestation)' : 'dstack'}`);
 const kp = keypairFromSeed(await tee.getKey('blindfold/provisioning'));
 log(`provisioning pubkey ${toHex(kp.publicKey)}`);
+if (!tee.isDev) {
+  let measurement = 'unknown';
+  try { measurement = await tee.measurement(); } catch { measurement = 'unknown'; }
+  log(`tee measurement ${measurement}`);
+}
 
 const reader = new MidnightLedgerReader({ indexerUrl: cfg.indexerUrl, indexerWsUrl: cfg.indexerWsUrl, contractAddress: cfg.contractAddress, networkId: cfg.network });
 const first = await reader.read(); // fails fast if the address has no state

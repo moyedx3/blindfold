@@ -1,4 +1,4 @@
-import { mkdir, readFile, readdir, writeFile, access } from 'node:fs/promises';
+import { mkdir, readFile, readdir, writeFile, rename, unlink, access } from 'node:fs/promises';
 import { join } from 'node:path';
 
 export interface Bucket {
@@ -22,7 +22,15 @@ export class FsBucket implements Bucket {
   constructor(private readonly dir: string) { this.ready = mkdir(dir, { recursive: true }).then(() => undefined); }
   async put(key: string, bytes: Uint8Array): Promise<void> {
     assertKey(key); await this.ready;
-    await writeFile(join(this.dir, key.toLowerCase()), bytes);
+    const final = join(this.dir, key.toLowerCase());
+    const tmp = `${final}.tmp-${process.pid}`;
+    try {
+      await writeFile(tmp, bytes);
+      await rename(tmp, final);
+    } catch (e) {
+      await unlink(tmp).catch(() => {});
+      throw e;
+    }
   }
   async get(key: string): Promise<Uint8Array | null> {
     if (!isValidKey(key)) return null; await this.ready;
@@ -33,7 +41,7 @@ export class FsBucket implements Bucket {
     if (!isValidKey(key)) return false; await this.ready;
     try { await access(join(this.dir, key.toLowerCase())); return true; } catch { return false; }
   }
-  async list(): Promise<string[]> { await this.ready; return (await readdir(this.dir)).sort(); }
+  async list(): Promise<string[]> { await this.ready; return (await readdir(this.dir)).filter(isValidKey).sort(); }
 }
 
 export class MemoryBucket implements Bucket {
