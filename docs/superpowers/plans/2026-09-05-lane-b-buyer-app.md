@@ -14,7 +14,7 @@
 
 - Node.js >= 22, npm workspaces, ESM, TypeScript `strict: true`.
 - Pinned Midnight packages (exact): `@midnight-ntwrk/dapp-connector-api` 4.0.1, `@midnight-ntwrk/midnight-js` 4.1.1, `@midnight-ntwrk/midnight-js-fetch-zk-config-provider` 4.1.1, `@midnight-ntwrk/midnight-js-http-client-proof-provider` 4.1.1, `@midnight-ntwrk/midnight-js-indexer-public-data-provider` 4.1.1, `@midnight-ntwrk/midnight-js-level-private-state-provider` 4.1.1, `@midnight-ntwrk/midnight-js-network-id` 4.1.1, `@midnight-ntwrk/compact-js` 2.5.1, `@midnight-ntwrk/compact-runtime` 0.16.0, `@midnight-ntwrk/ledger-v8` 8.1.0, `@midnight-ntwrk/wallet-sdk-address-format` 3.1.0. Root `overrides` pins `@midnight-ntwrk/onchain-runtime-v3` to 3.0.0.
-- Browser polyfills exactly as in the official `midnightntwrk/midnight-wallet-dapp`: `buffer`, `process`, `util`, `stream-browserify`, `events`, a `crypto` alias to a crypto-browserify shim, `vite-plugin-wasm`, `vite-plugin-static-copy`; `optimizeDeps.include` for `level` packages; `build.target: 'esnext'`.
+- Browser polyfills exactly as in the official `midnightntwrk/midnight-wallet-dapp`: `buffer`, `process`, `util`, `stream-browserify`, `events`, a `crypto` alias to a crypto-browserify shim, `vite-plugin-wasm`, `optimizeDeps.include` for `level` packages; `build.target: 'esnext'`.
 - Compiled contract artifacts are served from `/contract/blindfold/` (copied from `contract/build/blindfold` at dev/build time). Lane A Task 1 must be merged (or run `npm run compile -w contract` from the spike contract) before building.
 - Wire formats (spec section 6): `ePub` is a libsodium `crypto_box_keypair` public key; the purchase coin is `{ nonce: 32 random bytes, color: 32 zero bytes, value: price }`; the dispatch blob is 80 bytes and opens with `crypto_box_seal_open(blob, ePub, ePriv)`; content is `nonce(12) ‖ AES-256-GCM ‖ tag(16)` with `h_content = sha256(blob)`.
 - Indexer HTTP surface: `GET /contract` `{network, contract_address}`, `GET /catalog` `[{drop_id, price_star, title, h_content}]`, `GET /dispatch` `string[]`, `GET /dispatch/:key`, `GET /bucket/:key`.
@@ -227,7 +227,7 @@ export function explainWalletError(e: unknown): string {
   - `nightCoin(value: bigint): { nonce: Uint8Array; color: Uint8Array; value: bigint }`
   - `type TxRef = { txId: string; blockHeight: number }`
   - `interface BlindfoldClient { purchase(dropId: bigint, ePub: Uint8Array, price: bigint): Promise<TxRef>; createDrop(dropId: bigint, price: bigint, commit: Uint8Array): Promise<TxRef>; withdraw(idx: bigint): Promise<TxRef>; ledger(): Promise<LedgerView> }`
-  - `connectContract(providers, contractAddress: string, secret: Uint8Array, privateStateId: string): Promise<BlindfoldClient>`
+  - `connectContract(providers, contractAddress: string, secret: Uint8Array, privateStateId: string, networkId: string, zkAssetsPath?: string): Promise<BlindfoldClient>` (sets the midnight-js network id itself, ruling B12)
   - `class FakeBlindfoldClient implements BlindfoldClient` (records calls; `purchase` resolves with `{ txId: 'fake-<n>', blockHeight: n }` and appends to an internal ledger view) and `fakeConnectedWallet(): ConnectedWallet`.
 
 - [ ] **Step 1: Failing tests**
@@ -369,7 +369,8 @@ export async function readLedger(indexerUri: string, indexerWsUri: string, contr
 type PS = { secret: Uint8Array };
 const witnesses = { creatorSecret: (ctx: { privateState: PS }): [PS, Uint8Array] => [ctx.privateState, ctx.privateState.secret] };
 
-export async function connectContract(providers: any, contractAddress: string, secret: Uint8Array, privateStateId: string, zkAssetsPath = '/contract/blindfold'): Promise<BlindfoldClient> {
+export async function connectContract(providers: any, contractAddress: string, secret: Uint8Array, privateStateId: string, networkId: string, zkAssetsPath = '/contract/blindfold'): Promise<BlindfoldClient> {
+  setNetworkId(networkId as any);
   const compiled = CompiledContract.make<any>('blindfold', Blindfold.Contract).pipe(
     CompiledContract.withWitnesses(witnesses), CompiledContract.withCompiledFileAssets(zkAssetsPath),
   );
@@ -490,7 +491,6 @@ From the earlier prototype's buyer app (ask the owner for the files if you lack 
     "jsdom": "^26.0.0",
     "typescript": "^5.9.3",
     "vite": "^7.1.12",
-    "vite-plugin-static-copy": "^3.1.4",
     "vite-plugin-wasm": "^3.5.0",
     "vitest": "^4.1.9"
   },
@@ -868,7 +868,7 @@ export async function openSession(api: DropApi, choice: WalletChoice): Promise<S
   const wallet = await connectWallet(info.network, choice);
   if (wallet.networkId !== info.network) throw new Error(`wallet is on ${wallet.networkId}, the drop contract lives on ${info.network}. Switch the wallet network.`);
   const providers = await buildProviders(wallet, { zkAssetsUrl: `${window.location.origin}/contract/blindfold`, storeName: 'blindfold-buyer', proofServerFallback: import.meta.env.VITE_PROOF_SERVER_URL ?? 'http://localhost:6300' });
-  const client = await connectContract(providers, info.contract_address, crypto.getRandomValues(new Uint8Array(32)), `blindfold-buyer-${info.contract_address.slice(0, 8)}`);
+  const client = await connectContract(providers, info.contract_address, crypto.getRandomValues(new Uint8Array(32)), `blindfold-buyer-${info.contract_address.slice(0, 8)}`, info.network);
   return { wallet, client, contractAddress: info.contract_address, network: info.network };
 }
 
