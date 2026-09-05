@@ -90,7 +90,7 @@ Design choices:
 Flow:
 
 ```
-creator app   createDrop(dropId, price) on the contract          (wallet tx)
+creator app   createDrop(dropId, price, commit) on the contract  (wallet tx)
               encrypt content with K_drop, upload ciphertext     (carried over)
               verify TEE attestation, seal {dropId, K_drop, h_content} to the enclave   (carried over)
 
@@ -103,6 +103,9 @@ buyer app     poll blobs, trial-open with e_priv, sha256 check, AES-GCM decrypt 
 
 creator       withdraw(i): contract sends the escrowed coin to the creator's own shielded key
 ```
+
+`commit` is `sha256(K_drop ‖ h_content)`, computed off-chain by the creator app; the contract stores it
+as opaque bytes and never sees `K_drop`.
 
 Contract ledger (spike version): `drops`, `dropOwner`, `purchaseCount`, `purchases`, `purchaseDrop`, `escrow`.
 Creator authorization is a secret witness hashed into `dropOwner` (never use `ownPublicKey()` for auth;

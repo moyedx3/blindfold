@@ -4,7 +4,7 @@ import { Catalog } from '../src/catalog';
 import { MemoryBucket } from '../src/bucket';
 import { DevTee } from '../src/dstack';
 import { StaticLedgerReader } from '../src/chain';
-import { keypairFromSeed, sodiumReady, sha256, fromHex, toHex } from '../src/keys';
+import { keypairFromSeed, sodiumReady, sha256, fromHex, toHex, concat } from '../src/keys';
 import { sealProvision } from '../src/provision';
 
 beforeAll(sodiumReady);
@@ -15,7 +15,7 @@ const hContent = toHex(sha256(content));
 
 function app() {
   const kp = keypairFromSeed(fromHex(seed));
-  const reader = new StaticLedgerReader({ drops: new Map([[1n, 10n]]), kCommit: new Map([[1n, sha256(kDrop)]]), purchaseCount: 0n, purchases: new Map(), purchaseDrop: new Map() });
+  const reader = new StaticLedgerReader({ drops: new Map([[1n, 10n]]), kCommit: new Map([[1n, sha256(concat([kDrop, fromHex(hContent)]))]]), purchaseCount: 0n, purchases: new Map(), purchaseDrop: new Map() });
   const deps = { tee: new DevTee(seed), kp, catalog: new Catalog(), content: new MemoryBucket(), dispatch: new MemoryBucket(), reader, network: 'undeployed', contractAddress: 'ab'.repeat(32) };
   return { server: buildServer(deps), deps, kp };
 }

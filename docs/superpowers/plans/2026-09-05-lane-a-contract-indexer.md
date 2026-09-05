@@ -21,6 +21,7 @@
 - Devnet genesis seed (public, funded, has shielded NIGHT): `0000000000000000000000000000000000000000000000000000000000000001`.
 - Native NIGHT token color for circuit arguments: 32 zero bytes. `1 NIGHT = 1_000_000 STAR`.
 - Wire formats are fixed by spec section 6: dispatch blob = libsodium `crypto_box_seal(K_drop, ePub)` (80 bytes); blob key = `hex(blake2b-256(ek_pub ‖ index_be64))`; provisioning payload = JSON `{drop_id, price_star, k_drop, h_content, title}` sealed to the enclave pubkey; attest = `{quote_hex, provisioning_pubkey_hex}` with `report_data[0:32] = sha256(pubkey)`.
+- Key commitment (R17): `kCommit[dropId] = sha256(K_drop ‖ h_content)`, where `h_content` is the 32-byte content hash decoded from its hex string, not the hex string itself. Computed off-chain by the creator app; the contract stores the 32 bytes as opaque.
 - No secrets in git: `.midnight-state.json`, `.midnight-wallet-state/`, `midnight-level-db/`, `contracts/managed/`, `contract/build/` are ignored. Logs never print `k_drop`, seeds, or secret keys.
 - Tests: vitest. Unit tests run without network. Devnet tests are tagged with `describe.skipIf(!process.env.DEVNET)` and run with `DEVNET=1`.
 - Commit after every task with a conventional message.
