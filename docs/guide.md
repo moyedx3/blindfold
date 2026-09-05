@@ -44,7 +44,7 @@ provisioning, dispatch-blob, and content-encryption code carries over from it.
 |---|---|
 | Feasibility spike (local devnet) | **Passed 2026-09-05.** See section 5. |
 | Lane A: `contract/` + `indexer/` | **Merged to main 2026-09-05.** Compact contract (createDrop / purchase / withdraw with a content-bound key commitment), deploy/fund/ledger scripts, devnet flow test (6 cases); indexer with attestation, provisioning validation against the chain, watcher, dispatch, HTTP surface, Dockerfile; 62 unit tests, a devnet end-to-end test (real purchase → dispatched blob opens to the key), and a test against Phala's dstack simulator. Plan: `docs/superpowers/plans/2026-09-05-lane-a-contract-indexer.md`. |
-| Lane B: `packages/midnight-web` + `buyer/` | Not started. Plan ready. |
+| Lane B: `packages/midnight-web` + `buyer/` | **Merged to main 2026-09-05.** Shared wallet package (DApp-connector discovery and connection, the official Lace adapter as midnight-js providers, `BlindfoldClient` over the compiled contract, fakes) and the buyer app (connect → catalog → buy with one shielded transaction → poll → trial-open → decrypt; recovery file; manual unlock; 24 h local persistence on by default; error hints). 14 + 25 unit tests, a Playwright smoke through a fake connector and mock indexer, and a real Lace purchase on the devnet that unlocked in ~20 s. Plan: `docs/superpowers/plans/2026-09-05-lane-b-buyer-app.md`. |
 | Lane C: `creator/` | Not started. Plan ready. |
 | Lane D: deploy, README, demo | Not started. Plan ready. `spike/` stays until Lane D's demo script replaces it. |
 | Hackathon registration | Registration opened 2026-09-01: https://luma.com/2pnv2fwk |
@@ -199,6 +199,11 @@ cd ../indexer && NETWORK=undeployed CONTRACT_ADDRESS=<addr> DEV_SEED_HEX=<64 hex
 DEVNET=1 CONTRACT_ADDRESS=<addr> npx vitest run test/e2e.devnet.test.ts   # end-to-end through HTTP + watcher
 docker build -f indexer/Dockerfile -t blindfold-indexer .                  # from the repo root
 ```
+
+Buyer app against that indexer: `cd buyer && VITE_INDEXER_URL=http://127.0.0.1:8080 npm run dev` → http://127.0.0.1:5173
+(Lace on Undeployed with the local proof server). Without a wallet or chain: `VITE_FAKE_WALLET=1 npm run dev`
+(dev builds only). Tests: `npm test -w buyer`, `npm test -w packages/midnight-web`, `cd buyer && npm run test:e2e`.
+Both apps set the midnight-js network id at session open from `GET /contract` and pass it to `connectContract`.
 
 Indexer HTTP surface (spec section 6): `GET /health`, `GET /contract`, `GET /attest`, `POST /provision`
 (sealed payload, `application/octet-stream`), `GET /catalog`, `GET /dispatch`, `GET /dispatch/:key`,
