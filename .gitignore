@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.DS_Store
+*.log
+# Midnight local state: wallet seeds, sync state, deployments
+.midnight-state.json
+.midnight-wallet-state/
+.midnight-wallet-state
+# compiled Compact artifacts (regenerate with `compact compile`)
+**/contracts/managed/
+# local secrets
+.env
+.env.*
+!.env.example
