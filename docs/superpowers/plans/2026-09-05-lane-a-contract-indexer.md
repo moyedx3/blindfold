@@ -233,7 +233,7 @@ import CompactStandardLibrary;
 
 export ledger drops: Map<Uint<64>, Uint<128>>;               // dropId -> price in STAR
 export ledger dropOwner: Map<Uint<64>, Bytes<32>>;           // dropId -> creator dapp pubkey
-export ledger kCommit: Map<Uint<64>, Bytes<32>>;             // dropId -> sha256(K_drop), set by the creator app
+export ledger kCommit: Map<Uint<64>, Bytes<32>>;             // dropId -> sha256(K_drop || h_content), set by the creator app
 export ledger purchaseCount: Counter;
 export ledger purchases: Map<Uint<64>, Bytes<32>>;           // index -> buyer one-time X25519 pubkey
 export ledger purchaseDrop: Map<Uint<64>, Uint<64>>;         // index -> dropId
@@ -498,7 +498,8 @@ describe.skipIf(!process.env.DEVNET)('blindfold contract flow (local devnet)', (
   let address: string;
   const creatorSecret = randomBytes(32);
   const kDrop = randomBytes(32);
-  const commit = createHash('sha256').update(kDrop).digest();
+  const hContentBytes = Buffer.alloc(32, 0xcd);
+  const commit = createHash('sha256').update(Buffer.concat([kDrop, hContentBytes])).digest();
 
   beforeAll(async () => {
     ctx = await createWallet({ network, networkConfig: config, seed: GENESIS_SEED });
@@ -1198,7 +1199,7 @@ const kDrop = fromHex('44'.repeat(32));
 const hContent = 'ab'.repeat(32);
 const payload: ProvisionPayload = { drop_id: 1, price_star: '1000000', k_drop: toHex(kDrop), h_content: hContent, title: 'cat' };
 const ledger = (over: Partial<LedgerSnapshot> = {}): LedgerSnapshot => ({
-  drops: new Map([[1n, 1_000_000n]]), kCommit: new Map([[1n, sha256(kDrop)]]),
+  drops: new Map([[1n, 1_000_000n]]), kCommit: new Map([[1n, sha256(concat([kDrop, fromHex(hContent)]))]]),
   purchaseCount: 0n, purchases: new Map(), purchaseDrop: new Map(), ...over,
 });
 async function contentBucket() { const b = new MemoryBucket(); await b.put(hContent, new Uint8Array(40)); return b; }
@@ -1282,7 +1283,7 @@ export async function validateProvision(p: ProvisionPayload, ledger: LedgerSnaps
   if (price !== BigInt(p.price_star)) throw new ProvisionError('price_mismatch', `on-chain price ${price} != ${p.price_star}`);
   const kDrop = fromHex(p.k_drop);
   const commit = ledger.kCommit.get(dropId);
-  if (!commit || toHex(commit) !== toHex(sha256(kDrop))) throw new ProvisionError('commit_mismatch', 'sha256(k_drop) does not match the on-chain commitment');
+  if (!commit || toHex(commit) !== toHex(sha256(concat([kDrop, fromHex(p.h_content)])))) throw new ProvisionError('commit_mismatch', 'sha256(k_drop || h_content) does not match the on-chain commitment');
   if (!(await content.has(p.h_content))) throw new ProvisionError('content_missing', `content ${p.h_content} not uploaded`);
   return { dropId, priceStar: price, kDrop, hContent: p.h_content, title: p.title };
 }
@@ -1636,7 +1637,7 @@ const hContent = toHex(sha256(content));
 
 function app() {
   const kp = keypairFromSeed(fromHex(seed));
-  const reader = new StaticLedgerReader({ drops: new Map([[1n, 10n]]), kCommit: new Map([[1n, sha256(kDrop)]]), purchaseCount: 0n, purchases: new Map(), purchaseDrop: new Map() });
+  const reader = new StaticLedgerReader({ drops: new Map([[1n, 10n]]), kCommit: new Map([[1n, sha256(concat([kDrop, fromHex(hContent)]))]]), purchaseCount: 0n, purchases: new Map(), purchaseDrop: new Map() });
   const deps = { tee: new DevTee(seed), kp, catalog: new Catalog(), content: new MemoryBucket(), dispatch: new MemoryBucket(), reader, network: 'undeployed', contractAddress: 'ab'.repeat(32) };
   return { server: buildServer(deps), deps, kp };
 }
