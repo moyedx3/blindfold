@@ -192,13 +192,31 @@ segment) mean Lace is still on Mainnet.
 
 ## 9. Repo rules
 
-- **No secrets in git, ever.** `.midnight-state.json` and wallet state are ignored. Never paste a seed, a private key, or a Lace address (a devnet address is also that wallet's mainnet address) into a tracked file.
+- **No secrets in git, ever.** `.midnight-state.json` and wallet state are ignored. Never paste a seed, a wallet secret, or a Lace address (a devnet address is also that wallet's mainnet address) into a tracked file.
 - This repo is a fresh start. Do not import history from the previous private repo.
 - `spike/` is throwaway. Findings move to `spike/NOTES.md` and this guide; code is rewritten in the real structure.
 - Pin every Midnight package to the matrix; bump only as a deliberate, tested change.
 - When a Compact contract changes, compile it with the real compiler before claiming anything about it.
 
-## 10. Open decisions for the design
+## 10. Design and per-lane plans
+
+- Spec (approved 2026-09-05): `docs/superpowers/specs/2026-09-05-blindfold-design.md`
+- Plans, one per lane, each self-contained with TDD steps and exact code. Pick your lane, read its
+  Global Constraints, then execute task by task (an agent should use the `superpowers:executing-plans`
+  or `superpowers:subagent-driven-development` skill):
+
+| Lane | Plan | Builds |
+|---|---|---|
+| A | `docs/superpowers/plans/2026-09-05-lane-a-contract-indexer.md` | `contract/` (Compact, deploy/flow scripts) and `indexer/` (TEE service, watcher, HTTP) |
+| B | `docs/superpowers/plans/2026-09-05-lane-b-buyer-app.md` | `packages/midnight-web/` (wallet + contract client, shared) and `buyer/` |
+| C | `docs/superpowers/plans/2026-09-05-lane-c-creator-app.md` | `creator/` |
+| D | `docs/superpowers/plans/2026-09-05-lane-d-deploy-demo.md` | devnet/Preprod/Phala runbooks, one-shot local demo, CI, submission README |
+
+Cross-lane contracts are the wire formats in spec section 6 and the interfaces listed at the top of each
+task. Lanes B and C mock the indexer and the contract client (`MockDropApi`, `FakeBlindfoldClient`) so
+they can start on day one; Lane A Task 1 (the compiled contract) is the only thing every lane needs first.
+
+## 11. Open decisions (resolved in the spec, listed for history)
 
 - Indexer shape: keep the Rust TEE service (attestation, provisioning, catalog, buckets, dispatch engine) and add a small TypeScript watcher next to it that reads the `purchases` map with midnight-js, or port the engine to TypeScript.
 - Wallets to support at the demo: Lace (judges, local proof server) and 1AM (audience, in-browser proving).
