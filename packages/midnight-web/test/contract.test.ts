@@ -44,4 +44,11 @@ describe('FakeBlindfoldClient', () => {
     await expect(c.purchase(1n, new Uint8Array(32), 4n)).rejects.toThrow(/underpaid/);
     await expect(c.purchase(2n, new Uint8Array(32), 5n)).rejects.toThrow(/unknown drop/);
   });
+  it('returns a fresh copy from ledger() so callers cannot mutate its state', async () => {
+    const c = new FakeBlindfoldClient({ drops: new Map([[1n, 5n]]) });
+    const v = await c.ledger();
+    v.drops.set(99n, 1n);
+    const v2 = await c.ledger();
+    expect(v2.drops.has(99n)).toBe(false);
+  });
 });

@@ -30,7 +30,13 @@ export class FakeBlindfoldClient implements BlindfoldClient {
     if (!this.view.escrow.has(idx)) throw new Error('nothing escrowed');
     this.view.escrow.delete(idx); return this.tx();
   }
-  async ledger(): Promise<LedgerView> { return this.view; }
+  async ledger(): Promise<LedgerView> {
+    return {
+      drops: new Map(this.view.drops), dropOwner: new Map(this.view.dropOwner), kCommit: new Map(this.view.kCommit),
+      purchaseCount: this.view.purchaseCount, purchases: new Map(this.view.purchases), purchaseDrop: new Map(this.view.purchaseDrop),
+      escrow: new Map(this.view.escrow),
+    };
+  }
 }
 
 export function fakeConnectedWallet(): ConnectedWallet {

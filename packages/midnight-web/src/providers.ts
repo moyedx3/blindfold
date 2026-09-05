@@ -10,6 +10,18 @@ const fromHex = (h: string) => new Uint8Array((h.replace(/^0x/, '').match(/.{1,2
 
 export type BlindfoldProviders = any; // MidnightProviders<'createDrop' | 'purchase' | 'withdraw'>
 
+export function withPostBlockUpdate<P extends { queryZSwapAndContractState: (...a: any[]) => Promise<any> }>(raw: P): P {
+  return {
+    ...raw,
+    async queryZSwapAndContractState(...args: any[]) {
+      const result = await raw.queryZSwapAndContractState(...args);
+      if (!result) return result;
+      const [zswapChainState, contractState, ledgerParameters] = result;
+      return [zswapChainState.postBlockUpdate(new Date()), contractState, ledgerParameters];
+    },
+  } as P;
+}
+
 export async function buildProviders(w: ConnectedWallet, opts: { zkAssetsUrl: string; storeName: string; proofServerFallback?: string }): Promise<BlindfoldProviders> {
   const zkConfigProvider = new FetchZkConfigProvider<'createDrop' | 'purchase' | 'withdraw'>(opts.zkAssetsUrl, fetch.bind(globalThis));
   const proofServer = w.proverServerUri ?? opts.proofServerFallback ?? 'http://localhost:6300';
@@ -30,7 +42,7 @@ export async function buildProviders(w: ConnectedWallet, opts: { zkAssetsUrl: st
   };
   return {
     privateStateProvider: levelPrivateStateProvider({ privateStateStoreName: opts.storeName, accountId: w.shieldedAddress, privateStoragePasswordProvider: () => 'blindfold-browser-private-state-1' }),
-    publicDataProvider: indexerPublicDataProvider(w.indexerUri, w.indexerWsUri),
+    publicDataProvider: withPostBlockUpdate(indexerPublicDataProvider(w.indexerUri, w.indexerWsUri)),
     zkConfigProvider, proofProvider, walletProvider, midnightProvider,
   };
 }
