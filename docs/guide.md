@@ -1,7 +1,7 @@
 # Blindfold: team guide
 
 > For humans and for coding agents. Read this first, then `spike/NOTES.md`.
-> Last verified: 2026-09-05.
+> Last verified: 2026-09-06.
 
 ## 한 줄 요약 (KR)
 
@@ -11,14 +11,15 @@ Blindfold는 잠긴 콘텐츠를 프라이버시 결제로 여는 "눈 가린 �
 Midnight Korea Hackathon 2026 제출용이며, 마감은 **2026-09-28 00:00 KST**.
 2026-09-05에 로컬 devnet에서 핵심 스파이크를 통과했다: 컨트랙트가 가격을 강제하고 구매자의 일회용 키를
 원자적으로 기록하며, Lace 지갑에서 shielded NIGHT로 결제가 되고, 크리에이터가 에스크로된 코인을 회수한다.
-**현황 (2026-09-05):** Lane A(컨트랙트 + 인덱서)와 Lane B(공용 지갑 패키지 + 구매자 앱)는 main에 머지됐고, 테스트가
-모두 통과하며 실제 Lace 지갑으로 구매까지 확인했다. 남은 일은 **Lane C(크리에이터 앱)** 와 **Lane D(배포 + 데모)** 이고,
-둘 다 지금 바로 시작할 수 있다. 무엇을 잡을지, 어떻게 시작할지는 바로 아래 섹션 0을 보라.
+**현황 (2026-09-06):** Lane A(컨트랙트 + 인덱서)와 Lane B(공용 지갑 패키지 + 구매자 앱)는 main에 머지됐고, 테스트가
+모두 통과하며 실제 Lace 지갑으로 구매까지 확인했다. Lane C(크리에이터 앱)는 `lane-c` 브랜치에서 구현과 fake-wallet smoke 검증을
+마쳤으며, 실제 Lace Creator → Buyer → withdraw 검증과 merge가 남아 있다. 이후 남은 큰 작업은 **Lane D(배포 + 데모)** 다.
+무엇을 이어서 할지는 바로 아래 섹션 0을 보라.
 아래는 영어로 이어진다. 에이전트는 이 문서와 `spike/NOTES.md`를 먼저 읽는다.
 
 ## 0. Start here: what is done, what to pick up
 
-Last updated 2026-09-05. Everything below is on `main`; nothing is waiting in a branch.
+Last updated 2026-09-06. Lanes A and B are on `main`; Lane C is implemented on `lane-c` and is waiting for its final real-wallet validation and merge.
 
 ### Done (merged to main)
 
@@ -33,7 +34,7 @@ Run all of it with section 7b. `npm test` at the root runs every workspace's uni
 
 | Lane | Builds | Plan | Status |
 |---|---|---|---|
-| **C** `creator/` | Creator web app: encrypt content in the browser, upload the ciphertext, register the drop on-chain with the key commitment, verify the indexer's attestation, seal `K_drop` to it, withdraw escrowed NIGHT later. | `docs/superpowers/plans/2026-09-05-lane-c-creator-app.md` (5 tasks) | **Recommended next.** Unblocked: everything it consumes (`@blindfold/midnight-web`, compiled contract, indexer `POST /provision` and `PUT /bucket`) is merged. Nothing demos end to end without it. |
+| **C** `creator/` | Creator web app: encrypt content in the browser, upload the ciphertext, register the drop on-chain with the key commitment, verify the indexer's attestation, seal `K_drop` to it, withdraw escrowed NIGHT later. | `docs/superpowers/plans/2026-09-05-lane-c-creator-app.md` (5 tasks) | **Implementation complete on `lane-c` (2026-09-06).** Unit tests and fake-wallet Playwright smoke pass; run the real Lace Creator → Buyer → withdraw flow, review, then merge. |
 | **D** deploy + demo | `deploy/` runbooks (local devnet, Preprod, Phala CVM), one-shot local demo script with headless seeding, CI, submission README, 3-minute demo script. | `docs/superpowers/plans/2026-09-05-lane-d-deploy-demo.md` (6 tasks) | Unblocked. Tasks 1 to 5 do not need the creator app; Task 6 (submission README and demo script) is best finished after Lane C merges. Fund demo wallets by 2026-09-24 so DUST accrues. |
 
 C and D touch disjoint directories, so two people (or two agents) can run them in parallel. Two shared
@@ -110,7 +111,7 @@ provisioning, dispatch-blob, and content-encryption code carries over from it.
 | Feasibility spike (local devnet) | **Passed 2026-09-05.** See section 5. |
 | Lane A: `contract/` + `indexer/` | **Merged to main 2026-09-05.** Compact contract (createDrop / purchase / withdraw with a content-bound key commitment), deploy/fund/ledger scripts, devnet flow test (6 cases); indexer with attestation, provisioning validation against the chain, watcher, dispatch, HTTP surface, Dockerfile; 62 unit tests, a devnet end-to-end test (real purchase → dispatched blob opens to the key), and a test against Phala's dstack simulator. Plan: `docs/superpowers/plans/2026-09-05-lane-a-contract-indexer.md`. |
 | Lane B: `packages/midnight-web` + `buyer/` | **Merged to main 2026-09-05.** Shared wallet package (DApp-connector discovery and connection, the official Lace adapter as midnight-js providers, `BlindfoldClient` over the compiled contract, fakes) and the buyer app (connect → catalog → buy with one shielded transaction → poll → trial-open → decrypt; recovery file; manual unlock; 24 h local persistence on by default; error hints). 14 + 25 unit tests, a Playwright smoke through a fake connector and mock indexer, and a real Lace purchase on the devnet that unlocked in ~20 s. Plan: `docs/superpowers/plans/2026-09-05-lane-b-buyer-app.md`. |
-| Lane C: `creator/` | **Open, recommended next.** Plan ready; see section 0. |
+| Lane C: `creator/` | **Implementation complete on `lane-c` 2026-09-06.** Browser encryption, upload, contract registration, attestation gate, sealed provisioning, creator-secret persistence, escrow listing, and withdraw UX are implemented. Unit tests and fake-wallet Playwright smoke pass; real Lace flow and merge remain. Plan: `docs/superpowers/plans/2026-09-05-lane-c-creator-app.md`. |
 | Lane D: deploy, README, demo | **Open.** Plan ready; see section 0. `spike/` stays until Lane D's demo script replaces it. |
 | Hackathon registration | Registration opened 2026-09-01: https://luma.com/2pnv2fwk |
 | Submission | Public GitHub repo with README, "how to run / demo flow", optional video, and a section on how Midnight is used. Judges clone, compile, and check that the README matches. Preview/Preprod testnet or local devnet are all allowed. |
@@ -309,7 +310,7 @@ demo seeder (Lane D) compute it exactly that way.
 |---|---|---|---|
 | A | `docs/superpowers/plans/2026-09-05-lane-a-contract-indexer.md` | `contract/` (Compact, deploy/flow scripts) and `indexer/` (TEE service, watcher, HTTP) | Merged 2026-09-05 |
 | B | `docs/superpowers/plans/2026-09-05-lane-b-buyer-app.md` | `packages/midnight-web/` (wallet + contract client, shared) and `buyer/` | Merged 2026-09-05 |
-| C | `docs/superpowers/plans/2026-09-05-lane-c-creator-app.md` | `creator/` | Open, recommended next (section 0) |
+| C | `docs/superpowers/plans/2026-09-05-lane-c-creator-app.md` | `creator/` | Implementation complete on `lane-c`; real Lace validation and merge pending |
 | D | `docs/superpowers/plans/2026-09-05-lane-d-deploy-demo.md` | devnet/Preprod/Phala runbooks, one-shot local demo, CI, submission README | Open, can run in parallel with C |
 
 Cross-lane contracts are the wire formats in spec section 6 and the interfaces listed at the top of each
