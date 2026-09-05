@@ -35,12 +35,12 @@ export class StaticLedgerReader implements LedgerReader {
   async read(): Promise<LedgerSnapshot> { return this.snapshot; }
 }
 
-export type MidnightLedgerReaderOptions = { indexerUrl: string; indexerWsUrl: string; contractAddress: string; networkId: string };
+export type MidnightLedgerReaderOptions = { indexerUrl: string; indexerWsUrl: string; contractAddress: string; networkId: 'undeployed' | 'preview' | 'preprod' };
 
 export class MidnightLedgerReader implements LedgerReader {
   private readonly pdp;
   constructor(private readonly opts: MidnightLedgerReaderOptions) {
-    setNetworkId(opts.networkId as any);
+    setNetworkId(opts.networkId);
     this.pdp = indexerPublicDataProvider(opts.indexerUrl, opts.indexerWsUrl);
   }
   async read(): Promise<LedgerSnapshot> {

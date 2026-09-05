@@ -3,13 +3,18 @@ import { dirname } from 'node:path';
 import type { LedgerReader } from './chain';
 import type { Engine } from './engine';
 
-export type DispatchedState = { dispatched: Record<string, string>; pending: string[] };
+export type DispatchedState = { dispatched: Record<string, string>; pending: string[]; failures: Record<string, number> };
+
+const MAX_FAILURES = 3;
 
 export class DispatchedStore {
   constructor(private readonly file: string) {}
   async load(): Promise<DispatchedState> {
-    try { return JSON.parse(await readFile(this.file, 'utf8')); }
-    catch (e: any) { if (e?.code === 'ENOENT') return { dispatched: {}, pending: [] }; throw e; }
+    try {
+      const raw = JSON.parse(await readFile(this.file, 'utf8'));
+      return { dispatched: raw.dispatched ?? {}, pending: raw.pending ?? [], failures: raw.failures ?? {} };
+    }
+    catch (e: any) { if (e?.code === 'ENOENT') return { dispatched: {}, pending: [], failures: {} }; throw e; }
   }
   async save(s: DispatchedState): Promise<void> {
     await mkdir(dirname(this.file), { recursive: true });
@@ -32,8 +37,9 @@ export class Watcher {
   async tick(): Promise<{ dispatched: number; pending: number }> {
     this.state ??= await this.deps.store.load();
     const snap = await this.deps.reader.read();
-    const todo = new Set<bigint>(this.state.pending.map(BigInt));
-    for (let i = 0n; i < snap.purchaseCount; i++) if (!(i.toString() in this.state.dispatched)) todo.add(i);
+    const isPoisoned = (i: bigint) => (this.state!.failures[i.toString()] ?? 0) >= MAX_FAILURES;
+    const todo = new Set<bigint>(this.state.pending.map(BigInt).filter((i) => !isPoisoned(i)));
+    for (let i = 0n; i < snap.purchaseCount; i++) if (!(i.toString() in this.state.dispatched) && !isPoisoned(i)) todo.add(i);
     let dispatched = 0; const pending: string[] = [];
     for (const i of [...todo].sort((a, b) => (a < b ? -1 : 1))) {
       if (i.toString() in this.state.dispatched) continue;
@@ -43,7 +49,12 @@ export class Watcher {
       try {
         res = await this.deps.engine.dispatch(i, dropId, ePub);
       } catch (e) {
+        const key = i.toString();
+        const failures = (this.state.failures[key] ?? 0) + 1;
+        this.state.failures[key] = failures;
         this.log(`watcher error on purchase ${i}: ${(e as Error).message}`);
+        if (failures >= MAX_FAILURES) this.log(`purchase ${i} poisoned after ${MAX_FAILURES} failures; skipping`);
+        await this.deps.store.save(this.state);
         continue;
       }
       if ('key' in res) {

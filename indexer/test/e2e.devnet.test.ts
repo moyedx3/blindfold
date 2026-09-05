@@ -137,18 +137,26 @@ describe.skipIf(!process.env.DEVNET || !process.env.CONTRACT_ADDRESS)('indexer e
         }
         expect(dispatchedThisTick).toBeGreaterThanOrEqual(1);
 
+        // The buyer cannot compute its own dispatch key, so it lists every blob and trial-opens each
+        // one; on a shared devnet ledger other purchases' blobs may also be listed, so only exactly
+        // one is expected to open under this buyer's keypair.
         const keys = (await server.inject({ method: 'GET', url: '/dispatch' })).json() as string[];
         expect(keys.length).toBeGreaterThanOrEqual(1);
-        const key = keys[keys.length - 1];
-        const blobRes = await server.inject({ method: 'GET', url: `/dispatch/${key}` });
-        expect(blobRes.statusCode).toBe(200);
-        expect(blobRes.rawPayload.length).toBe(80);
+        let openedCount = 0;
+        let openedKey: string | null = null;
+        let openedKDrop: Uint8Array | null = null;
+        for (const k of keys) {
+          const blobRes = await server.inject({ method: 'GET', url: `/dispatch/${k}` });
+          if (blobRes.statusCode !== 200) continue;
+          try {
+            const opened = sodium.crypto_box_seal_open(blobRes.rawPayload, ePub.publicKey, ePub.privateKey);
+            if (opened) { openedCount++; openedKey = k; openedKDrop = opened; }
+          } catch { /* not ours; keep trying */ }
+        }
+        expect(openedCount).toBe(1);
+        expect(toHex(openedKDrop!)).toBe(toHex(kDrop));
 
-        const opened = sodium.crypto_box_seal_open(blobRes.rawPayload, ePub.publicKey, ePub.privateKey);
-        expect(opened).not.toBeNull();
-        expect(toHex(opened!)).toBe(toHex(kDrop));
-
-        console.log(`e2e: drop_id=${dropId} dispatch_key=${key}`);
+        console.log(`e2e: drop_id=${dropId} dispatch_key=${openedKey}`);
       } finally {
         // Step 7: stop the wallet.
         if (ctx) await ctx.wallet.stop();
