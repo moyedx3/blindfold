@@ -168,7 +168,7 @@ const mod = await loadContractModule();
 const found: any = await findDeployedContract(providers, { compiledContract: await loadCompiledContract(), contractAddress: address, privateStateId: `seed-${address.slice(0, 8)}`, initialPrivateState: { secret } });
 const view = mod.ledger((await providers.publicDataProvider.queryContractState(address))!.data);
 let dropId = 1n; for (const [k] of view.drops) if (k >= dropId) dropId = k + 1n;
-const commit = createHash('sha256').update(kDrop).digest();
+const commit = createHash('sha256').update(Buffer.concat([kDrop, Buffer.from(hContent, 'hex')])).digest();
 const tx = await found.callTx.createDrop(dropId, priceStar, new Uint8Array(commit));
 console.log(`createDrop(${dropId}) tx ${tx.public.txId}`);
 

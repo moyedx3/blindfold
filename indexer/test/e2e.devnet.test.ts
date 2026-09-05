@@ -19,7 +19,7 @@ import { DevTee } from '../src/dstack';
 import { MidnightLedgerReader } from '../src/chain';
 import { Engine } from '../src/engine';
 import { Watcher, DispatchedStore } from '../src/watcher';
-import { keypairFromSeed, sodiumReady, sha256, fromHex, toHex } from '../src/keys';
+import { keypairFromSeed, sodiumReady, sha256, fromHex, toHex, concat } from '../src/keys';
 import { sealProvision } from '../src/provision';
 
 const PRICE = 1_000_000n;
@@ -88,7 +88,6 @@ describe.skipIf(!process.env.DEVNET || !process.env.CONTRACT_ADDRESS)('indexer e
         const snap = await reader.read();
         const dropId = nextDropId(snap.drops);
         const kDrop = randomBytes(32);
-        await creator.callTx.createDrop(dropId, PRICE, sha256(kDrop));
 
         // Step 3: content blob lands in the bucket via HTTP.
         const contentBlob = randomBytes(64);
@@ -100,6 +99,9 @@ describe.skipIf(!process.env.DEVNET || !process.env.CONTRACT_ADDRESS)('indexer e
           headers: { 'content-type': 'application/octet-stream' },
         });
         expect(putRes.statusCode).toBe(200);
+
+        // createDrop commits to K_drop and the content hash together (R17): sha256(K_drop || h_content).
+        await creator.callTx.createDrop(dropId, PRICE, sha256(concat([kDrop, fromHex(hContent)])));
 
         // Step 4: attest, seal, provision, confirm the catalog.
         const attest = (await server.inject({ method: 'GET', url: '/attest' })).json() as { provisioning_pubkey_hex: string };

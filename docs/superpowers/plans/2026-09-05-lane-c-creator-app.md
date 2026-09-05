@@ -4,7 +4,7 @@
 
 **Goal:** Ship `creator/`, the web app where a creator encrypts content, registers the drop on the contract with a key commitment, verifies the indexer's TEE attestation, seals the content key to it, and later withdraws escrowed NIGHT.
 
-**Architecture:** The earlier prototype's creator app is carried over for encryption, attestation verification (Intel DCAP chain, pinned measurement, `report_data` binding), and sealed-box provisioning. Two things are new: a wallet step that calls `createDrop(dropId, price, sha256(K_drop))` before provisioning, and a withdraw view that calls `withdraw(i)` for escrowed purchases of the creator's drops. The creator's contract secret (the `creatorSecret` witness) is generated once and kept in local storage with export and import.
+**Architecture:** The earlier prototype's creator app is carried over for encryption, attestation verification (Intel DCAP chain, pinned measurement, `report_data` binding), and sealed-box provisioning. Two things are new: a wallet step that calls `createDrop(dropId, price, sha256(K_drop ‖ h_content))` before provisioning, and a withdraw view that calls `withdraw(i)` for escrowed purchases of the creator's drops. The creator's contract secret (the `creatorSecret` witness) is generated once and kept in local storage with export and import.
 
 **Tech Stack:** React 19, Vite 7, TypeScript 5.9, libsodium-wrappers 0.7.15, @phala/dcap-qvl ^0.5.2, ky 2, zod 4, `@blindfold/midnight-web` (Lane B Task 1 and 2), vitest 4, Playwright 1.61.
 
@@ -15,7 +15,7 @@
 - Node.js >= 22, npm workspaces, ESM, TypeScript `strict: true`. Same Vite polyfill setup as the buyer app (Lane B Task 3 Step 2), same pinned Midnight packages through `@blindfold/midnight-web`, root `overrides` pins `@midnight-ntwrk/onchain-runtime-v3` to 3.0.0.
 - Compiled contract artifacts served from `/contract/blindfold/` (copied from `contract/build/blindfold`). Lane A Task 1 must be merged, or compile the spike contract.
 - Wire formats (spec section 6): I4 content blob `nonce(12) ‖ AES-256-GCM ‖ tag(16)`, `h_content = sha256(blob)`, `PUT /bucket/{h_content}` (server verifies the hash, 50 MB max). I5 provisioning JSON `{drop_id, price_star, k_drop(hex), h_content, title}` sealed with `crypto_box_seal` to the enclave pubkey, `POST /provision` body `application/octet-stream`; responses 200 / 400 bad seal or payload / 404 drop not on-chain or content missing / 409 price or commitment mismatch. I6 `GET /attest` `{quote_hex, provisioning_pubkey_hex}`; verify with `@phala/dcap-qvl`, TCB `UpToDate`, RTMR3 (TD reports) equals the pinned measurement, `report_data[0:32] = sha256(pubkey)`. `GET /contract` `{network, contract_address}`.
-- Contract: `createDrop(dropId: bigint, price: bigint /* STAR */, commit: Uint8Array /* sha256(K_drop) */)`, `withdraw(idx: bigint)`. `1 NIGHT = 1_000_000 STAR`; prices are entered in NIGHT with up to 6 decimals and must be > 0.
+- Contract: `createDrop(dropId: bigint, price: bigint /* STAR */, commit: Uint8Array /* sha256(K_drop ‖ h_content) */)`, `withdraw(idx: bigint)`. `1 NIGHT = 1_000_000 STAR`; prices are entered in NIGHT with up to 6 decimals and must be > 0.
 - The dev indexer answers `quote_hex: "dev"`; the app must offer an explicit "dev mode: skip attestation" switch (default off) for the local devnet, and refuse to provision on `quote_hex === "dev"` unless that switch is on.
 - Never log or persist wallet keys or `K_drop` beyond the in-memory flow. The creator secret is stored under localStorage key `blindfold-creator-secret` as hex, and its export file has version `blindfold-creator-secret-1`.
 - Tests: vitest (jsdom) for modules, Playwright for the smoke. Commit after every task.
@@ -338,11 +338,11 @@ export function listDrops(contractAddress: string, storage: Storage = localStora
 - Create: `creator/src/chain.ts`, `creator/test/chain.test.ts`
 
 **Interfaces:**
-- Consumes: `BlindfoldClient`, `LedgerView` from `@blindfold/midnight-web`; `sha256` from `bytes.ts`.
+- Consumes: `BlindfoldClient`, `LedgerView` from `@blindfold/midnight-web`; `sha256`, `fromHex` from `bytes.ts`.
 - Produces:
-  - `commitFor(kDrop: Uint8Array): Promise<Uint8Array>` (`sha256(K_drop)`)
+  - `commitFor(kDrop: Uint8Array, hContent: string): Promise<Uint8Array>` (`sha256(concat([kDrop, fromHex(hContent)]))`)
   - `suggestDropId(view: LedgerView): number` (`max(drops.keys) + 1`, or 1)
-  - `registerDrop(client, args: { dropId: number; priceStar: bigint; kDrop: Uint8Array }): Promise<TxRef>`
+  - `registerDrop(client, args: { dropId: number; priceStar: bigint; kDrop: Uint8Array; hContent: string }): Promise<TxRef>`
   - `escrowForDrops(view: LedgerView, dropIds: number[]): Array<{ index: bigint; dropId: bigint; valueStar: bigint }>`
 
 - [ ] **Step 1: Failing tests**
@@ -351,12 +351,15 @@ export function listDrops(contractAddress: string, storage: Storage = localStora
 import { describe, it, expect } from 'vitest';
 import { FakeBlindfoldClient } from '@blindfold/midnight-web';
 import { commitFor, suggestDropId, registerDrop, escrowForDrops } from '../src/chain';
-import { sha256 } from '../src/bytes';
+import { sha256, fromHex } from '../src/bytes';
+
+const concatBytes = (a: Uint8Array, b: Uint8Array) => { const o = new Uint8Array(a.length + b.length); o.set(a, 0); o.set(b, a.length); return o; };
 
 describe('creator chain ops', () => {
-  it('commitFor is sha256 of the key', async () => {
+  it('commitFor is sha256(K_drop || h_content)', async () => {
     const k = new Uint8Array(32).fill(1);
-    expect(Buffer.from(await commitFor(k)).equals(Buffer.from(await sha256(k)))).toBe(true);
+    const hContent = 'cd'.repeat(32);
+    expect(Buffer.from(await commitFor(k, hContent)).equals(Buffer.from(await sha256(concatBytes(k, fromHex(hContent)))))).toBe(true);
   });
   it('suggestDropId is max+1 or 1', async () => {
     const c = new FakeBlindfoldClient({ drops: new Map([[4n, 1n], [9n, 1n]]) });
@@ -366,10 +369,11 @@ describe('creator chain ops', () => {
   it('registerDrop calls createDrop with the commitment', async () => {
     const c = new FakeBlindfoldClient();
     const k = new Uint8Array(32).fill(2);
-    await registerDrop(c, { dropId: 7, priceStar: 5n, kDrop: k });
+    const hContent = 'ab'.repeat(32);
+    await registerDrop(c, { dropId: 7, priceStar: 5n, kDrop: k, hContent });
     expect(c.calls).toEqual([{ method: 'createDrop', dropId: 7n, price: 5n }]);
     const v = await c.ledger();
-    expect(Buffer.from(v.kCommit.get(7n)!).equals(Buffer.from(await sha256(k)))).toBe(true);
+    expect(Buffer.from(v.kCommit.get(7n)!).equals(Buffer.from(await sha256(concatBytes(k, fromHex(hContent)))))).toBe(true);
   });
   it('escrowForDrops lists only the given drops', async () => {
     const c = new FakeBlindfoldClient({ drops: new Map([[1n, 5n], [2n, 5n]]) });
@@ -385,17 +389,26 @@ describe('creator chain ops', () => {
 
 ```ts
 import type { BlindfoldClient, LedgerView, TxRef } from '@blindfold/midnight-web';
-import { sha256 } from './bytes';
+import { sha256, fromHex } from './bytes';
 
-export function commitFor(kDrop: Uint8Array): Promise<Uint8Array> { return sha256(kDrop); }
+function concat(parts: Uint8Array[]): Uint8Array {
+  const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
+  let o = 0; for (const p of parts) { out.set(p, o); o += p.length; }
+  return out;
+}
+
+/** commit = sha256(K_drop ‖ h_content); binds the commitment to the content, not just the key (R17). */
+export function commitFor(kDrop: Uint8Array, hContent: string): Promise<Uint8Array> {
+  return sha256(concat([kDrop, fromHex(hContent)]));
+}
 
 export function suggestDropId(view: LedgerView): number {
   let max = 0n; for (const id of view.drops.keys()) if (id > max) max = id;
   return Number(max + 1n);
 }
 
-export async function registerDrop(client: BlindfoldClient, a: { dropId: number; priceStar: bigint; kDrop: Uint8Array }): Promise<TxRef> {
-  return client.createDrop(BigInt(a.dropId), a.priceStar, await commitFor(a.kDrop));
+export async function registerDrop(client: BlindfoldClient, a: { dropId: number; priceStar: bigint; kDrop: Uint8Array; hContent: string }): Promise<TxRef> {
+  return client.createDrop(BigInt(a.dropId), a.priceStar, await commitFor(a.kDrop, a.hContent));
 }
 
 export function escrowForDrops(view: LedgerView, dropIds: number[]): Array<{ index: bigint; dropId: bigint; valueStar: bigint }> {
@@ -511,7 +524,7 @@ export function App() {
       const enc = await encryptContent(plaintext);
       await uploadContentBlob(indexerUrl, enc.hContent, enc.blob);
       setSteps({ ...idle, encrypt: 'done', register: 'running' });
-      const tx = await registerDrop(session.client, { dropId: id, priceStar, kDrop: enc.kDrop });
+      const tx = await registerDrop(session.client, { dropId: id, priceStar, kDrop: enc.kDrop, hContent: enc.hContent });
       rememberDrop({ dropId: id, title, priceStar: priceStar.toString(), contractAddress: session.contractAddress, hContent: enc.hContent });
       setSteps({ ...idle, encrypt: 'done', register: 'done', attest: 'running' });
       const attestation = await fetchAttestation(indexerUrl);

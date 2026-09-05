@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { MemoryBucket } from '../src/bucket';
-import { keypairFromSeed, sodiumReady, sha256, toHex, fromHex } from '../src/keys';
+import { keypairFromSeed, sodiumReady, sha256, toHex, fromHex, concat } from '../src/keys';
 import { openProvision, validateProvision, sealProvision, ProvisionError, type ProvisionPayload } from '../src/provision';
 import type { LedgerSnapshot } from '../src/chain';
 
@@ -10,7 +10,7 @@ const kDrop = fromHex('44'.repeat(32));
 const hContent = 'ab'.repeat(32);
 const payload: ProvisionPayload = { drop_id: 1, price_star: '1000000', k_drop: toHex(kDrop), h_content: hContent, title: 'cat' };
 const ledger = (over: Partial<LedgerSnapshot> = {}): LedgerSnapshot => ({
-  drops: new Map([[1n, 1_000_000n]]), kCommit: new Map([[1n, sha256(kDrop)]]),
+  drops: new Map([[1n, 1_000_000n]]), kCommit: new Map([[1n, sha256(concat([kDrop, fromHex(hContent)]))]]),
   purchaseCount: 0n, purchases: new Map(), purchaseDrop: new Map(), ...over,
 });
 async function contentBucket() { const b = new MemoryBucket(); await b.put(hContent, new Uint8Array(40)); return b; }
@@ -44,6 +44,9 @@ describe('validateProvision', () => {
   });
   it('rejects a commitment mismatch', async () => {
     await expect(validateProvision(payload, ledger({ kCommit: new Map([[1n, new Uint8Array(32)]]) }), await contentBucket())).rejects.toMatchObject({ code: 'commit_mismatch' });
+  });
+  it('rejects a commitment over K_drop alone', async () => {
+    await expect(validateProvision(payload, ledger({ kCommit: new Map([[1n, sha256(kDrop)]]) }), await contentBucket())).rejects.toMatchObject({ code: 'commit_mismatch' });
   });
   it('rejects when the content blob is not uploaded', async () => {
     await expect(validateProvision(payload, ledger(), new MemoryBucket())).rejects.toMatchObject({ code: 'content_missing' });

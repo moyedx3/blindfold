@@ -1,7 +1,7 @@
 import type { Bucket } from './bucket';
 import type { LedgerSnapshot } from './chain';
 import type { DropConfig } from './catalog';
-import { fromHex, seal, sealOpen, sha256, toHex, type Keypair } from './keys';
+import { concat, fromHex, seal, sealOpen, sha256, toHex, type Keypair } from './keys';
 
 export type ProvisionPayload = { drop_id: number; price_star: string; k_drop: string; h_content: string; title: string };
 export type ProvisionErrorCode = 'bad_seal' | 'bad_payload' | 'unknown_drop' | 'price_mismatch' | 'commit_mismatch' | 'content_missing';
@@ -29,6 +29,8 @@ export function openProvision(sealed: Uint8Array, kp: Keypair): ProvisionPayload
   return { drop_id: p.drop_id, price_star: p.price_star, k_drop: p.k_drop.toLowerCase(), h_content: p.h_content.toLowerCase(), title: p.title };
 }
 
+/** commit = sha256(K_drop ‖ h_content_bytes), where h_content_bytes is the 32-byte content hash
+ *  decoded from the hex string p.h_content (R17: the commitment binds the content, not just the key). */
 export async function validateProvision(p: ProvisionPayload, ledger: LedgerSnapshot, content: Bucket): Promise<DropConfig> {
   const dropId = BigInt(p.drop_id);
   const price = ledger.drops.get(dropId);
@@ -36,7 +38,8 @@ export async function validateProvision(p: ProvisionPayload, ledger: LedgerSnaps
   if (price !== BigInt(p.price_star)) throw new ProvisionError('price_mismatch', `on-chain price ${price} != ${p.price_star}`);
   const kDrop = fromHex(p.k_drop);
   const commit = ledger.kCommit.get(dropId);
-  if (!commit || toHex(commit) !== toHex(sha256(kDrop))) throw new ProvisionError('commit_mismatch', 'sha256(k_drop) does not match the on-chain commitment');
+  const expected = sha256(concat([kDrop, fromHex(p.h_content)]));
+  if (!commit || toHex(commit) !== toHex(expected)) throw new ProvisionError('commit_mismatch', 'sha256(k_drop || h_content) does not match the on-chain commitment');
   if (!(await content.has(p.h_content))) throw new ProvisionError('content_missing', `content ${p.h_content} not uploaded`);
   return { dropId, priceStar: price, kDrop, hContent: p.h_content, title: p.title };
 }

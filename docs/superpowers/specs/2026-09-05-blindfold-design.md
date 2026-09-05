@@ -126,9 +126,10 @@ export circuit withdraw(idx: Uint<64>): [] {
 ```
 
 Notes:
-- `commit` is computed off-chain by the creator app as `sha256(K_drop)` and stored as-is. The contract
-  never sees `K_drop`. The indexer refuses a provisioning whose `sha256(k_drop)` differs from the
-  on-chain value, so only the holder of `K_drop` can provision a drop, without any wallet signature.
+- `commit` is computed off-chain by the creator app as `sha256(K_drop ‖ h_content)` (the content hash as
+  32 raw bytes, not its hex string) and stored as-is. The contract never sees `K_drop`. The indexer
+  refuses a provisioning whose `sha256(k_drop ‖ h_content)` differs from the on-chain value, so only the
+  holder of `K_drop` for the drop's own content can provision it, without any wallet signature.
 - `ownPublicKey()` is used only as the withdraw recipient, never for authorization (it is prover-claimed).
   Authorization is the `creatorSecret` witness hashed into `dropOwner`.
 - Every caller must supply a `creatorSecret` witness implementation; the buyer app supplies random bytes
@@ -164,7 +165,8 @@ verifies the hash), `GET /bucket/{h_content}`. Size limit 50 MB.
 "k_drop": "<64 hex>", "h_content": "<64 hex>", "title": "cat photo" }` sealed with libsodium
 `crypto_box_seal` to the enclave provisioning public key; `POST /provision` with the raw sealed bytes.
 The indexer: opens the box; checks `drops[drop_id]` exists on-chain with price `== price_star` and
-`kCommit[drop_id] == sha256(k_drop)`; checks the content blob for `h_content` exists in the bucket;
+`kCommit[drop_id] == sha256(k_drop ‖ h_content)` (h_content hex-decoded to 32 raw bytes); checks the
+content blob for `h_content` exists in the bucket;
 stores the config (overwrite allowed, idempotent). Errors: 400 bad seal or JSON, 404 drop not on-chain
 or content missing, 409 price or commitment mismatch.
 
@@ -242,7 +244,7 @@ Changed:
   with the real `creatorSecret` witness.
 - `secret.ts`: the creator's 32-byte contract secret, generated once, stored in localStorage, export and
   import as a file (same UX as the buyer's recovery file, same warning).
-- Flow: pick file → encrypt (K_drop, h_content, commit = sha256(K_drop)) → upload ciphertext →
+- Flow: pick file → encrypt (K_drop, h_content, commit = sha256(K_drop ‖ h_content)) → upload ciphertext →
   connect wallet → `createDrop` → verify attestation → seal + `POST /provision` → done.
   Drop id: the app picks `max(existing) + 1` from the ledger and lets the user override.
 - Withdraw view: reads the ledger, lists escrow entries whose drop the creator owns, `withdraw(i)` per

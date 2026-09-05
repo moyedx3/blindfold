@@ -21,7 +21,8 @@ describe.skipIf(!process.env.DEVNET)('blindfold contract flow (local devnet)', (
   let address: string;
   const creatorSecret = randomBytes(32);
   const kDrop = randomBytes(32);
-  const commit = createHash('sha256').update(kDrop).digest();
+  const hContent = Buffer.alloc(32, 0xcd);
+  const commit = createHash('sha256').update(Buffer.concat([kDrop, hContent])).digest();
 
   beforeAll(async () => {
     ctx = await createWallet({ network, networkConfig: config, seed: GENESIS_SEED });
