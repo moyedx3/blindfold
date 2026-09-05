@@ -87,3 +87,16 @@ network Undeployed, proof server Local (http://localhost:6300). Fund it from gen
   `spike/web` -> `purchase` tx in block 513 in 37 s. Indexer: entryPoint `purchase`, 0 unshielded inputs/outputs,
   3 zswap events, 1 dust event, raw tx contains none of the wallet's coin/encryption/unshielded public keys.
   Ledger: `purchases[1]` = the page's ePub, `escrow[1]` = 1,000,000 STAR @ mt_index 34. Spike complete.
+
+## dstack simulator endpoint (2026-09-05, Task 13)
+
+`npx phala simulator start` prints a **unix socket path**, not `http://localhost:8090`, on
+macOS/arm64: `~/.phala-cloud/simulator/0.5.3/dstack.sock` (confirmed no TCP listener on 8090 on
+this box). `DstackClient(endpoint)` from `@phala/dstack-sdk` accepts that socket path directly.
+`DSTACK_SIMULATOR_ENDPOINT=/Users/<you>/.phala-cloud/simulator/0.5.3/dstack.sock npx vitest run
+test/simulator.test.ts` passes. One-time hiccup: the CLI's auto-installer shells out to `wget`,
+which this machine doesn't have; worked around by downloading
+`dstack-simulator-0.5.3-aarch64-apple-darwin.tgz` from the GitHub release with `curl -L` and
+extracting it into `~/.phala-cloud/simulator/0.5.3/` myself (`tar -xvf ... --strip-components=1`,
+matching what the CLI's installer does) — after that, `npx phala simulator start`/`stop` worked
+normally.
