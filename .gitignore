@@ -26,6 +26,8 @@ contract/build/
 buyer/public/contract/
 # creator app's copy of the compiled contract artifacts (regenerate at dev/build time)
 creator/public/contract/
+creator/playwright-report/
+creator/test-results/
 # Playwright run artifacts
 buyer/test-results/
 buyer/playwright-report/
