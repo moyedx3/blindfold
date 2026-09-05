@@ -18,3 +18,5 @@ spike/web/src/contract/compiled/
 **/midnight-level-db/
 # local git worktrees
 .worktrees/
+# subagent-driven-development scratch
+.superpowers/
