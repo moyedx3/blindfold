@@ -1,0 +1,33 @@
+services:
+  indexer:
+    # Deploy by immutable digest, for example:
+    # ghcr.io/moyedx3/blindfold-indexer@sha256:<64 hex>
+    image: ${IMAGE:?set IMAGE to a public, digest-pinned indexer image}
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      NETWORK: "preprod"
+      CONTRACT_ADDRESS: ${CONTRACT_ADDRESS:?set the Preprod contract address}
+      DATA_DIR: "/data"
+      PORT: "8080"
+      POLL_MS: "5000"
+      DSTACK_ENDPOINT: "/var/run/dstack.sock"
+    volumes:
+      - /var/run/dstack.sock:/var/run/dstack.sock
+      - indexer-data:/data
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:8080/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+volumes:
+  indexer-data: {}

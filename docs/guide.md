@@ -1,7 +1,8 @@
 # Blindfold: team guide
 
-> For humans and for coding agents. Read this first, then `spike/NOTES.md`.
-> Last verified: 2026-09-06.
+> For humans and for coding agents. Read this first, then `deploy/README.md`.
+> `spike/NOTES.md` remains historical evidence until Lane D is merged.
+> Last verified: 2026-09-08.
 
 ## 한 줄 요약 (KR)
 
@@ -11,15 +12,18 @@ Blindfold는 잠긴 콘텐츠를 프라이버시 결제로 여는 "눈 가린 �
 Midnight Korea Hackathon 2026 제출용이며, 마감은 **2026-09-28 00:00 KST**.
 2026-09-05에 로컬 devnet에서 핵심 스파이크를 통과했다: 컨트랙트가 가격을 강제하고 구매자의 일회용 키를
 원자적으로 기록하며, Lace 지갑에서 shielded NIGHT로 결제가 되고, 크리에이터가 에스크로된 코인을 회수한다.
-**현황 (2026-09-06):** Lane A(컨트랙트 + 인덱서)와 Lane B(공용 지갑 패키지 + 구매자 앱)는 main에 머지됐고, 테스트가
+**현황 (2026-09-08):** Lane A(컨트랙트 + 인덱서)와 Lane B(공용 지갑 패키지 + 구매자 앱)는 main에 머지됐고, 테스트가
 모두 통과하며 실제 Lace 지갑으로 구매까지 확인했다. Lane C(크리에이터 앱)는 `lane-c` 브랜치에서 구현과 fake-wallet smoke 검증을
-마쳤으며, 실제 Lace Creator → Buyer → withdraw 검증과 merge가 남아 있다. 이후 남은 큰 작업은 **Lane D(배포 + 데모)** 다.
+마쳤으며, 실제 Lace Creator → Buyer → withdraw 검증과 merge가 남아 있다. Lane D는 `lane-c`를 기반으로 한 `lane-d` 브랜치에서
+로컬 데모 자동화, 복구, 배포 runbook, CI, attestation smoke, 제출 문서를 구현했고 실제 로컬 devnet 실행까지 통과했다.
+Preprod/Phala 실배포 값과 데모 영상은 아직 기록하지 않았다.
 무엇을 이어서 할지는 바로 아래 섹션 0을 보라.
 아래는 영어로 이어진다. 에이전트는 이 문서와 `spike/NOTES.md`를 먼저 읽는다.
 
 ## 0. Start here: what is done, what to pick up
 
-Last updated 2026-09-06. Lanes A and B are on `main`; Lane C is implemented on `lane-c` and is waiting for its final real-wallet validation and merge.
+Last updated 2026-09-08. Lanes A and B are on `main`; Lane C is implemented on `lane-c`. Lane D is based
+on Lane C so its integrated CI and demo paths can be verified before the branches merge in order.
 
 ### Done (merged to main)
 
@@ -35,15 +39,16 @@ Run all of it with section 7b. `npm test` at the root runs every workspace's uni
 | Lane | Builds | Plan | Status |
 |---|---|---|---|
 | **C** `creator/` | Creator web app: encrypt content in the browser, upload the ciphertext, register the drop on-chain with the key commitment, verify the indexer's attestation, seal `K_drop` to it, withdraw escrowed NIGHT later. | `docs/superpowers/plans/2026-09-05-lane-c-creator-app.md` (5 tasks) | **Implementation complete on `lane-c` (2026-09-06).** Unit tests and fake-wallet Playwright smoke pass; run the real Lace Creator → Buyer → withdraw flow, review, then merge. |
-| **D** deploy + demo | `deploy/` runbooks (local devnet, Preprod, Phala CVM), one-shot local demo script with headless seeding, CI, submission README, 3-minute demo script. | `docs/superpowers/plans/2026-09-05-lane-d-deploy-demo.md` (6 tasks) | Unblocked. Tasks 1 to 5 do not need the creator app; Task 6 (submission README and demo script) is best finished after Lane C merges. Fund demo wallets by 2026-09-24 so DUST accrues. |
+| **D** deploy + demo | `deploy/` runbooks (local devnet, Preprod, Phala CVM), one-shot local demo script with headless seeding, CI, attestation/recovery checks, submission README, 3-minute demo script. | `docs/superpowers/plans/2026-09-05-lane-d-deploy-demo.md` (6 tasks) | **Implementation complete and locally verified on `lane-d` (2026-09-08).** `demo:local`, restart/re-provision recovery, 119 unit tests, both browser smokes, the 6-case contract devnet flow, the indexer devnet E2E, and the indexer image build pass. Preprod contract deployment, Phala CVM deployment, live attestation evidence, real-wallet creator flow, and video require owner credentials/funded wallets and remain release steps. Fund demo wallets by 2026-09-24 so DUST accrues. |
 
-C and D touch disjoint directories, so two people (or two agents) can run them in parallel. Two shared
-files to coordinate on: root `package.json` (Lane C adds `creator` to `workspaces`) and `README.md`
-(Lane D Task 6 rewrites it; until then keep the status line current).
+Merge order is Lane C first, then Lane D. Lane D intentionally starts from `origin/lane-c` because CI,
+the local demo, and submission docs include the creator workspace. The shared files are root `package.json`,
+`package-lock.json`, `README.md`, and this guide; resolve those against the final Lane C commit before merge.
 
 ### How to pick up a lane
 
-1. `git switch -c lane-c main` (or `lane-d`). Do not work on `main`.
+1. Do not work on `main`. Lane C already exists at `origin/lane-c`; Lane D should branch from that tip so
+   the integrated demo can build both apps. Other work should use a purpose-named branch from the latest relevant lane.
 2. Set up once: section 6. Confirm the baseline is green before changing anything:
    `npm install && npm run check:runtime-copies && npm run compile -w contract && npm test`.
 3. Read the plan's **Global Constraints**, then execute it task by task. An agent should use
@@ -69,8 +74,12 @@ Things Lanes A and B learned that the C and D plan texts predate. Follow these o
   Compute it exactly that way (the plans already do) or the indexer answers 409 on `POST /provision`.
 - **The dev indexer answers `quote_hex: "dev"`** on `GET /attest`. The creator app must refuse to provision
   against it unless the explicit "dev mode: skip attestation" switch is on.
-- **The devnet compose file** currently lives at `spike/hello/docker-compose.yml`. Lane D Task 1 moves it to
-  `deploy/devnet/`; until then everyone starts the devnet from the spike path (section 7b).
+- **The devnet compose file** for Lane D lives at `deploy/devnet/docker-compose.yml`. Its service images
+  remain pinned to node 1.0.0, indexer 4.3.3, and proof server 8.1.0.
+- **Creator ports are 5175/5176.** Buyer uses 5173/5174; do not copy the stale 5174 creator port from the
+  original Lane D plan.
+- **Public deployment metadata must be verified, not guessed.** `deploy/networks.json` keeps `null`
+  placeholders until the Preprod contract, Phala endpoint, image digest, and RTMR3 are actually checked.
 
 ### Before you push
 
@@ -112,7 +121,7 @@ provisioning, dispatch-blob, and content-encryption code carries over from it.
 | Lane A: `contract/` + `indexer/` | **Merged to main 2026-09-05.** Compact contract (createDrop / purchase / withdraw with a content-bound key commitment), deploy/fund/ledger scripts, devnet flow test (6 cases); indexer with attestation, provisioning validation against the chain, watcher, dispatch, HTTP surface, Dockerfile; 62 unit tests, a devnet end-to-end test (real purchase → dispatched blob opens to the key), and a test against Phala's dstack simulator. Plan: `docs/superpowers/plans/2026-09-05-lane-a-contract-indexer.md`. |
 | Lane B: `packages/midnight-web` + `buyer/` | **Merged to main 2026-09-05.** Shared wallet package (DApp-connector discovery and connection, the official Lace adapter as midnight-js providers, `BlindfoldClient` over the compiled contract, fakes) and the buyer app (connect → catalog → buy with one shielded transaction → poll → trial-open → decrypt; recovery file; manual unlock; 24 h local persistence on by default; error hints). 14 + 25 unit tests, a Playwright smoke through a fake connector and mock indexer, and a real Lace purchase on the devnet that unlocked in ~20 s. Plan: `docs/superpowers/plans/2026-09-05-lane-b-buyer-app.md`. |
 | Lane C: `creator/` | **Implementation complete on `lane-c` 2026-09-06.** Browser encryption, upload, contract registration, attestation gate, sealed provisioning, creator-secret persistence, escrow listing, and withdraw UX are implemented. Unit tests and fake-wallet Playwright smoke pass; real Lace flow and merge remain. Plan: `docs/superpowers/plans/2026-09-05-lane-c-creator-app.md`. |
-| Lane D: deploy, README, demo | **Open.** Plan ready; see section 0. `spike/` stays until Lane D's demo script replaces it. |
+| Lane D: deploy, README, demo | **Implementation complete and locally verified on `lane-d` 2026-09-08.** Local compose/seeder/recovery, Preprod and Phala runbooks, digest/RTMR3 verification, CI, README, readiness notes, and demo script pass local verification. Preprod/Phala/live-wallet/video steps remain external release checks. `spike/` stays until Lane C and Lane D merge in order. |
 | Hackathon registration | Registration opened 2026-09-01: https://luma.com/2pnv2fwk |
 | Submission | Public GitHub repo with README, "how to run / demo flow", optional video, and a section on how Midnight is used. Judges clone, compile, and check that the README matches. Preview/Preprod testnet or local devnet are all allowed. |
 
@@ -226,43 +235,47 @@ proof-server image 8.1.0, node image 1.0.0, indexer-standalone 4.3.3. Every pack
 Without it npm installs two copies of the on-chain runtime WASM and **every circuit call fails** with
 `expected instance of StateValue`. Verify with `find node_modules -type d -path '*onchain-runtime-v3'` (one hit).
 
-## 7. Running the spike
+## 7. Running Blindfold locally
 
 ```bash
-cd spike/hello
-npm install                      # override already in package.json
-npm run setup                    # docker compose up (node, indexer, proof server) + compile + deploy hello-world
-compact compile contracts/blindfold.compact contracts/managed/blindfold
-npx tsx src/blindfold.ts         # deploy + createDrop + purchase + withdraw, ~85 s
-npx tsx src/read.ts <contract>   # print the ledger of a deployed contract
+export PATH="$HOME/.docker/bin:$HOME/.local/bin:$PATH"
+npm install
+compact update 0.31.1
+npm run qa:demo
+npm run demo:local
 
-# browser buyer
-cp -R contracts/managed/blindfold ../web/src/contract/compiled/blindfold
-cd ../web && npm install && npm run dev      # http://localhost:5173
+# separate terminals
+VITE_INDEXER_URL=http://127.0.0.1:8080 npm run dev -w buyer
+VITE_INDEXER_URL=http://127.0.0.1:8080 npm run dev -w creator
 ```
 
 Lace for the local devnet: install the Lace extension (Chrome), create a wallet, Settings > Midnight >
 network **Undeployed**, proof server **Local (http://localhost:6300)**. Fund it from the genesis wallet:
 
 ```bash
-cd spike/hello && npx tsx src/fund.ts <mn_addr…> <mn_shield-addr…> 1000   # accepts mainnet-encoded addresses
+npm run fund -w contract -- <mn_addr…> <mn_shield-addr…> 1000
 ```
 
 then press **Generate tDUST** in Lace and wait a few minutes. Addresses shown as `mn_addr1…` (no network
 segment) mean Lace is still on Mainnet.
 
-## 7b. Running what exists today (Lanes A and B)
+The local demo writes a mode-0600 recovery bundle under `.local/`. After restarting only the Blindfold
+indexer, `npm run demo:recover` restores the seeded encrypted content and re-provisions the in-memory key.
+It refuses real TEE endpoints. See `deploy/README.md` for shutdown, reset, Preprod, Phala, and troubleshooting.
+
+## 7b. Manual integration and devnet tests
 
 ```bash
 export PATH="$HOME/.docker/bin:$HOME/.local/bin:$PATH"
 npm install && npm run check:runtime-copies          # exactly one onchain-runtime copy
 npm run compile -w contract                          # Compact 0.31.1 -> contract/build/blindfold
 npm test -w indexer                                  # 62 unit tests (devnet/simulator cases skip)
-docker compose -f spike/hello/docker-compose.yml up -d --wait   # local devnet until Lane D lands deploy/devnet
-cd contract && DEVNET=1 npm run deploy               # prints CONTRACT_ADDRESS=...
-DEVNET=1 npm run test:devnet                         # 6-case contract flow test (~90 s)
-cd ../indexer && NETWORK=undeployed CONTRACT_ADDRESS=<addr> DEV_SEED_HEX=<64 hex> DATA_DIR=./data npm start
-DEVNET=1 CONTRACT_ADDRESS=<addr> npx vitest run test/e2e.devnet.test.ts   # end-to-end through HTTP + watcher
+docker compose -f deploy/devnet/docker-compose.yml up -d --wait
+npm run deploy -w contract                            # prints CONTRACT_ADDRESS=...
+DEVNET=1 npm run test:devnet -w contract              # 6-case contract flow test (~90 s)
+cd indexer && NETWORK=undeployed CONTRACT_ADDRESS=<addr> DEV_SEED_HEX=<64 hex> DATA_DIR=../.local/manual-indexer npm start
+DEVNET=1 CONTRACT_ADDRESS=<addr> npx vitest run test/e2e.devnet.test.ts
+cd ..
 docker build -f indexer/Dockerfile -t blindfold-indexer .                  # from the repo root
 ```
 
@@ -270,6 +283,8 @@ Buyer app against that indexer: `cd buyer && VITE_INDEXER_URL=http://127.0.0.1:8
 (Lace on Undeployed with the local proof server). Without a wallet or chain: `VITE_FAKE_WALLET=1 npm run dev`
 (dev builds only). Tests: `npm test -w buyer`, `npm test -w packages/midnight-web`, `cd buyer && npm run test:e2e`
 (the smoke starts its own fake-wallet server on 5174).
+Creator app: `VITE_INDEXER_URL=http://127.0.0.1:8080 npm run dev -w creator` → http://127.0.0.1:5175;
+its Playwright smoke uses 5176. The local creator flow requires the explicit dev-attestation switch.
 Both apps set the midnight-js network id at session open from `GET /contract` and pass it to `connectContract`.
 
 Indexer HTTP surface (spec section 6): `GET /health`, `GET /contract`, `GET /attest`, `POST /provision`
@@ -290,6 +305,12 @@ demo seeder (Lane D) compute it exactly that way.
 6. Spending unshielded NIGHT from a script needs `wallet.signRecipe(recipe, keystore.signData)` before `finalizeRecipe`, or the node answers custom error 192.
 7. Lace needs the local proof server on port 6300; 1AM proves in-browser. Public testnets: faucet gives unshielded tNIGHT, shielding is a separate transfer, DUST takes time on a fresh wallet. Fund demo wallets a day early.
 8. `sendShielded` to a key other than the caller's does not notify the recipient. Hence escrow in the contract and creator-initiated `withdraw`.
+9. The enclave catalog is intentionally in-memory. Content and dispatch files persist, but every indexer
+   restart or measurement-changing redeploy requires creator re-provisioning before new purchases can unlock.
+10. An image tag is not a trust pin. Phala deployment records the immutable image digest and verified RTMR3;
+    changing the image, compose, or relevant environment may rotate both RTMR3 and the provisioning key.
+11. Never claim a public deployment while `deploy/networks.json` contains `null` placeholders. Run
+    `npm run attest:inspect` to discover and verify a quote, then `npm run smoke:live` against independently pinned values.
 
 ## 9. Repo rules
 
@@ -311,17 +332,19 @@ demo seeder (Lane D) compute it exactly that way.
 | A | `docs/superpowers/plans/2026-09-05-lane-a-contract-indexer.md` | `contract/` (Compact, deploy/flow scripts) and `indexer/` (TEE service, watcher, HTTP) | Merged 2026-09-05 |
 | B | `docs/superpowers/plans/2026-09-05-lane-b-buyer-app.md` | `packages/midnight-web/` (wallet + contract client, shared) and `buyer/` | Merged 2026-09-05 |
 | C | `docs/superpowers/plans/2026-09-05-lane-c-creator-app.md` | `creator/` | Implementation complete on `lane-c`; real Lace validation and merge pending |
-| D | `docs/superpowers/plans/2026-09-05-lane-d-deploy-demo.md` | devnet/Preprod/Phala runbooks, one-shot local demo, CI, submission README | Open, can run in parallel with C |
+| D | `docs/superpowers/plans/2026-09-05-lane-d-deploy-demo.md` | devnet/Preprod/Phala runbooks, one-shot local demo, CI, submission README | Implementation complete and locally verified on `lane-d`; external release checks remain |
 
 Cross-lane contracts are the wire formats in spec section 6 and the interfaces listed at the top of each
 task. The fakes Lane C's plan relies on exist and are exported from `@blindfold/midnight-web`
 (`FakeBlindfoldClient`, `fakeConnectedWallet`, `installFakeConnector`); the buyer's in-process indexer
 stand-in is `buyer/src/mockApi.ts`.
 
-## 11. Open decisions (resolved in the spec, listed for history)
+## 11. Resolved implementation decisions
 
-- Indexer shape: keep the Rust TEE service (attestation, provisioning, catalog, buckets, dispatch engine) and add a small TypeScript watcher next to it that reads the `purchases` map with midnight-js, or port the engine to TypeScript.
-- Wallets to support at the demo: Lace (judges, local proof server) and 1AM (audience, in-browser proving).
-- Demo network: build on local devnet, deploy to Preprod for the submission.
-- Dispatch blobs: keep the HTTP bucket, or post the 80-byte sealed blob on-chain through a `deliver` circuit.
-- Creator withdraw UX, and whether the creator app registers drops directly or the enclave does it.
+- The TEE indexer and Midnight ledger watcher are TypeScript in one deployable image.
+- Lace is the verified demo wallet. DApp Connector discovery remains generic, but 1AM is not claimed until tested.
+- Local devnet is the reproducible judge path; Preprod plus Phala CVM is the submission/demo target.
+- The 80-byte sealed dispatch blobs stay in the HTTP bucket for this submission.
+- The creator app registers drops directly and initiates escrow withdrawal itself.
+- Public TEE identity is a tuple of digest-pinned image/compose configuration and verified RTMR3. A rotation
+  requires republishing the pin and re-provisioning active drops.
