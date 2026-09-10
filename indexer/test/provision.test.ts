@@ -4,8 +4,11 @@ import { keypairFromSeed, sodiumReady, sha256, toHex, fromHex, concat } from '..
 import { openProvision, validateProvision, sealProvision, ProvisionError, type ProvisionPayload } from '../src/provision';
 import type { LedgerSnapshot } from '../src/chain';
 
-beforeAll(sodiumReady);
-const kp = keypairFromSeed(fromHex('33'.repeat(32)));
+let kp: ReturnType<typeof keypairFromSeed>;
+beforeAll(async () => {
+  await sodiumReady();
+  kp = keypairFromSeed(fromHex('33'.repeat(32)));
+});
 const kDrop = fromHex('44'.repeat(32));
 const hContent = 'ab'.repeat(32);
 const payload: ProvisionPayload = { drop_id: 1, price_star: '1000000', k_drop: toHex(kDrop), h_content: hContent, title: 'cat' };
