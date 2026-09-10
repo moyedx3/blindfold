@@ -17,11 +17,15 @@ from the service operator.
 
 ## Status
 
-As of 2026-09-08, the contract, indexer, shared wallet package, and buyer app are merged on `main`. The
-creator app is implemented on `lane-c`; Lane D deployment/demo tooling is implemented and locally verified
-on `lane-d`. A real creator-to-buyer Lace run, Preprod deployment, Phala CVM
-deployment, and demo recording remain release checks. No placeholder in `deploy/networks.json` should be
-presented as a live deployment.
+As of 2026-09-11, commit `f060804e8b06024dfbbe14708a38de1b873efdc7` (on
+`fix/creator-recovery`, including Lanes A/B/C/D) has passed CI, local Midnight devnet deployment,
+six real-chain contract tests, and the indexer purchase-to-key-delivery E2E test. The local services and
+seeded demo drop were restored after a shutdown. These results do not establish public-network or real-TEE
+readiness, and do not mean this branch has been merged into `main`.
+
+A complete creator-to-buyer Lace run, public Preprod deployment, Phala CVM verification, and mainnet
+readiness checks remain TODO. See the [deployment verification record and TODOs](docs/deployment-verification-2026-09-11.md).
+No placeholder in `deploy/networks.json` should be presented as a live deployment.
 
 ## How Midnight is used
 
@@ -63,8 +67,9 @@ Buyer: <http://127.0.0.1:5173> · Creator: <http://127.0.0.1:5175>
 
 For Lace, select Midnight network **Undeployed**, use the local proof server at
 `http://127.0.0.1:6300`, fund the wallet with `npm run fund -w contract -- <unshielded> <shielded> 1000`,
-and generate tDUST. The creator must intentionally enable its local-dev attestation bypass; production
-builds still reject the dev quote.
+and generate tDUST. The creator must intentionally enable its local-dev attestation bypass. This is
+allowed only on `undeployed` with a loopback indexer URL, including when serving a production build
+locally; public networks reject the dev quote even if the switch is enabled.
 
 Full local, Preprod, Phala, recovery, and troubleshooting instructions are in
 [`deploy/README.md`](deploy/README.md).

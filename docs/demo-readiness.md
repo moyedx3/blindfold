@@ -8,6 +8,11 @@ in `deploy/networks.json`. Until then, describe those parts as implemented but a
 
 ## Already evidenced
 
+Latest run: [2026-09-10/11 local devnet verification](deployment-verification-2026-09-11.md),
+at commit `f060804e8b06024dfbbe14708a38de1b873efdc7`. This run used headless wallet SDK
+transactions and dev attestation; the real Lace purchase below is earlier evidence, not a new browser
+wallet test performed during this run. Public testnet and mainnet readiness remain unverified.
+
 - Compact enforces the price, escrows shielded NIGHT, records the buyer's one-time key, and permits only
   the authorized creator to withdraw.
 - A real Lace purchase completed on the local Midnight devnet without exposing wallet keys in the public
