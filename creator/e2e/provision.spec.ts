@@ -3,7 +3,7 @@ import sodium from "libsodium-wrappers";
 
 test("provision flow reaches the provision step and posts a sealed payload", async ({ page }) => {
   await sodium.ready;
-  const enclave = sodium.crypto_box_keypair();
+  let enclave = sodium.crypto_box_keypair();
   let sealed: Buffer | null = null;
 
   await page.route("**/mock/contract", (route) => route.fulfill({
@@ -21,7 +21,9 @@ test("provision flow reaches the provision step and posts a sealed payload", asy
   await page.goto("/");
   await page.getByRole("button", { name: "Connect" }).click();
   await page.getByLabel(/dev mode/).check();
+  const backupDownload = page.waitForEvent('download');
   await page.getByRole("button", { name: /Encrypt \+ Register \+ Provision/ }).click();
+  const backup = await backupDownload;
   await expect(page.getByText(/Drop 1 is live/)).toBeVisible({ timeout: 30_000 });
 
   expect(sealed).not.toBeNull();
@@ -30,4 +32,12 @@ test("provision flow reaches the provision step and posts a sealed payload", asy
   expect(payload.drop_id).toBe(1);
   expect(payload.k_drop).toMatch(/^[0-9a-f]{64}$/);
   expect(payload.price_star).toBe("1000000");
+
+  // A restarted enclave has a new provisioning key and an empty catalog.
+  enclave = sodium.crypto_box_keypair();
+  sealed = null;
+  await page.getByLabel('Restore an existing drop').setInputFiles((await backup.path())!);
+  await expect(page.getByText(/Drop 1 restored/)).toBeVisible({ timeout: 30_000 });
+  const restored = sodium.crypto_box_seal_open(new Uint8Array(sealed!), enclave.publicKey, enclave.privateKey);
+  expect(JSON.parse(new TextDecoder().decode(restored))).toEqual(payload);
 });

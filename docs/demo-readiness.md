@@ -43,6 +43,18 @@ in `deploy/networks.json`. Until then, describe those parts as implemented but a
 
 ## Demo-day recovery
 
+- The creator downloads an encrypted drop recovery file before sending the registration transaction.
+  Keep that file and the original creator secret backup separately. The recovery file includes the
+  encrypted content and content key protected with HKDF/AES-GCM using the creator secret.
+- After a provisioning failure or indexer restart, connect to the original network and contract,
+  import the original creator secret if needed, and use **Restore an existing drop**. Recovery checks
+  the on-chain price and key commitment, verifies the current attestation, and re-provisions without
+  registering the drop again. A failed registration itself cannot be recovered this way.
+- Recovery files are available only for drops created after this feature was added. Previously lost
+  content keys cannot be reconstructed. If the automatic download was blocked, use **Download latest
+  recovery file** before leaving the page.
+- Dev attestation bypass is enforced only on the undeployed network with a loopback indexer URL.
+
 - Keep two funded, DUST-ready wallets and verify them the day before.
 - Keep the pinned image digest, CVM endpoint, contract address, and RTMR3 together in `deploy/networks.json`.
 - Run `npm run smoke:live` before recording or presenting.
