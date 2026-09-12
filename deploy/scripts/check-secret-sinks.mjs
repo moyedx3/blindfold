@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+// Lint, not a leak guard: flags console.* calls and JSX expressions whose
+// arguments mention one of the identifiers below. A secret bound to any other
+// name, or printed through a wrapper, is not detected. Keep the list current
+// when a new secret-bearing variable is introduced.
 import fs from "node:fs";
 import path from "node:path";
 import ts from "typescript";
@@ -9,11 +13,20 @@ const SECRET_NAMES = new Set([
   "creatorSecret",
   "creator_secret",
   "creator_secret_hex",
+  "kDropHex",
+  "k_drop_hex",
+  "seed",
+  "seedHex",
+  "seed_hex",
+  "mnemonic",
+  "secret",
+  "secretHex",
+  "secret_hex",
   "MIDNIGHT_WALLET_SEED",
   "MIDNIGHT_WALLET_MNEMONIC",
 ]);
 const SOURCE_EXTENSIONS = new Set([".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs"]);
-const roots = ["creator/src", "buyer/src", "indexer/src", "contract/scripts", "deploy/scripts"];
+const roots = ["creator/src", "buyer/src", "indexer/src", "packages/midnight-web/src", "contract/scripts", "deploy/scripts"];
 const findings = [];
 
 function collect(entry) {

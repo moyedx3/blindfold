@@ -1,6 +1,6 @@
 name = "blindfold-indexer"
 compose_file = "docker-compose.yml"
 env_file = ".env"
-public_logs = true
+public_logs = false
 public_sysinfo = true
 listed = false

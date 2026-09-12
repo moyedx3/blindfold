@@ -21,7 +21,7 @@ indexer_pid=""
 cleanup() {
   exit_code=$?
   rm -rf "$temporary_dir"
-  if [[ "$exit_code" -ne 0 && -n "$indexer_pid" ]] && kill -0 "$indexer_pid" 2>/dev/null; then
+  if [[ "$exit_code" -ne 0 && -n "$indexer_pid" ]]; then
     kill "$indexer_pid" 2>/dev/null || true
     rm -f "$pid_file"
   fi
@@ -47,6 +47,11 @@ npx tsx deploy/scripts/record-network.ts undeployed "$contract_address"
 
 echo "== 4/5 start Blindfold indexer in local dev mode"
 bash deploy/scripts/stop-indexer.sh
+if curl --silent --max-time 2 http://127.0.0.1:8080/health >/dev/null 2>&1; then
+  echo "something already answers on 127.0.0.1:8080, so the health check below would pass against the wrong indexer." >&2
+  echo "Stop it first (npm run demo:stop, or: lsof -nP -iTCP:8080 -sTCP:LISTEN)." >&2
+  exit 1
+fi
 data_dir="$local_dir/indexers/$contract_address"
 mkdir -p "$data_dir"
 DEV_SEED_HEX="${DEV_SEED_HEX:-1111111111111111111111111111111111111111111111111111111111111111}" \
