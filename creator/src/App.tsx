@@ -30,18 +30,19 @@ function formatNight(star: bigint): string {
 export function App() {
   const wallets = useMemo(() => availableWallets(), []);
   const [session, setSession] = useState<Session | null>(null);
-  const [title, setTitle] = useState("Private demo drop");
+  const [title, setTitle] = useState("Private demo content");
   const [dropId, setDropId] = useState("1");
   const [priceNight, setPriceNight] = useState("1");
   const [expectedMeasurement, setExpectedMeasurement] = useState(defaultMeasurement);
   const [devMode, setDevMode] = useState(false);
-  const [textContent, setTextContent] = useState("Hello from a locally encrypted drop.");
+  const [textContent, setTextContent] = useState("Hello from locally encrypted content.");
   const [file, setFile] = useState<File | null>(null);
   const [steps, setSteps] = useState<Steps>(idleSteps);
   const [message, setMessage] = useState("");
   const [backup, setBackup] = useState<string | null>(null);
   const [escrow, setEscrow] = useState<Array<{ index: bigint; dropId: bigint; valueStar: bigint }>>([]);
   const [privateNight, setPrivateNight] = useState<bigint | null>(null);
+  const [balanceUpdating, setBalanceUpdating] = useState(false);
   const [cashingOut, setCashingOut] = useState(false);
   const inFlight = useRef(false);
   const running = Object.values(steps).some((state) => state === "running");
@@ -123,7 +124,7 @@ export function App() {
       await postProvision(indexerUrl, await sealProvisionPayload(saved.payload, key));
       rememberDrop({ dropId: saved.payload.drop_id, title: saved.payload.title, priceStar: saved.payload.price_star, contractAddress: session.contractAddress, hContent: saved.payload.h_content });
       setSteps({ encrypt: 'done', register: 'done', attest: 'done', provision: 'done' });
-      setMessage(`Drop ${saved.payload.drop_id} restored. No new registration transaction was sent.`);
+      setMessage(`Content ${saved.payload.drop_id} restored. No new registration transaction was sent.`);
       await refreshEscrow();
     } catch (error) {
       setSteps({ ...idleSteps, provision: 'error' });
@@ -139,7 +140,7 @@ export function App() {
 
     try {
       const id = Number(dropId);
-      if (!Number.isSafeInteger(id) || id < 0) throw new Error("validation: drop id must be a non-negative integer");
+      if (!Number.isSafeInteger(id) || id < 0) throw new Error("validation: content id must be a non-negative integer");
       const priceStar = priceNightToStar(priceNight);
       // Check the size before reading, encrypting, and building the recovery file;
       // the indexer would reject the blob anyway, after all that memory was spent.
@@ -154,7 +155,7 @@ export function App() {
       const payload = buildProvisionPayload({ dropId: id, priceStar, kDrop: encrypted.kDrop, hContent: encrypted.hContent, title });
       const recovery = await exportRecovery({ network: session.network, contractAddress: session.contractAddress, payload, blobHex: toHex(encrypted.blob) }, loadOrCreateSecret());
       setBackup(recovery);
-      triggerDownload(new Blob([recovery], { type: 'application/json' }), `blindfold-drop-${id}-recovery.json`);
+      triggerDownload(new Blob([recovery], { type: 'application/json' }), `blindfold-content-${id}-recovery.json`);
       await uploadContentBlob(indexerUrl, encrypted.hContent, encrypted.blob);
 
       setSteps({ ...idleSteps, encrypt: "done", register: "running" });
@@ -168,7 +169,7 @@ export function App() {
       await postProvision(indexerUrl, await sealProvisionPayload(payload, enclavePubkey));
 
       setSteps({ encrypt: "done", register: "done", attest: "done", provision: "done" });
-      setMessage(`Drop ${id} is live (tx ${tx.txId}). Buyers can purchase it now.`);
+      setMessage(`Content ${id} is live (tx ${tx.txId}). Buyers can purchase it now.`);
       setDropId(String(id + 1));
     } catch (error) {
       setSteps((previous) => {
@@ -184,11 +185,25 @@ export function App() {
   async function withdraw(index: bigint): Promise<void> {
     if (!session) return;
     setMessage("");
+    const before = privateNight ?? 0n;
     try {
       const tx = await session.client.withdraw(index);
-      setMessage(`Withdrew purchase ${index} (tx ${tx.txId}).`);
+      setMessage(`Withdrew sale #${index} (tx ${tx.txId}). Waiting for the wallet to show it in your private balance…`);
       await refreshEscrow();
-      await refreshPrivateBalance();
+      // The wallet learns about the withdrawn coin a few seconds after the block; poll up to 2 min.
+      setBalanceUpdating(true);
+      let seen = false;
+      try {
+        for (let i = 0; i < 40; i += 1) {
+          const now = await session.client.privateBalance();
+          setPrivateNight(now);
+          if (now > before) { seen = true; break; }
+          await new Promise((resolve) => setTimeout(resolve, 3000));
+        }
+      } finally {
+        setBalanceUpdating(false);
+      }
+      setMessage(seen ? `Withdrew sale #${index} (tx ${tx.txId}).` : `Withdrew sale #${index} (tx ${tx.txId}), but the wallet has not shown it yet. Press Refresh in the Private balance panel in a moment.`);
     } catch (error) {
       setMessage(explainWalletError(error));
     }
@@ -211,7 +226,7 @@ export function App() {
       } catch (error) {
         if (!(error instanceof CreatorSecretConflictError)) throw error;
         const confirmed = window.confirm(
-          "This browser already holds a different creator secret. Replacing it removes withdraw access for drops registered with the current secret unless you exported it. Replace it?",
+          "This browser already holds a different creator secret. Replacing it removes withdraw access for content registered with the current secret unless you exported it. Replace it?",
         );
         if (!confirmed) {
           setMessage("Import cancelled. The stored creator secret is unchanged.");
@@ -244,7 +259,7 @@ export function App() {
             </section>
           ) : null}
 
-          {session ? <p className="note">Connected to {session.network} · contract {session.contractAddress.slice(0, 10)}… · Private balance: {privateNight === null ? '…' : formatNight(privateNight)}</p> : null}
+          {session ? <p className="note">Connected to {session.network} · contract {session.contractAddress.slice(0, 10)}… · Private balance: {privateNight === null ? '…' : formatNight(privateNight)}{balanceUpdating ? ' (updating…)' : ''}</p> : null}
 
           <section className="panel">
             <div className="panel-head"><h2>Creator secret</h2></div>
@@ -262,16 +277,16 @@ export function App() {
           </section>
 
           <section className="panel">
-            <div className="panel-head"><h2>Drop recovery</h2></div>
-            <p className="note">A recovery file downloads before registration. Keep it and your original creator secret backup. Import it to retry key delivery or restore a drop after an indexer restart.</p>
-            <button disabled={!backup} onClick={() => { if (backup) triggerDownload(new Blob([backup], { type: 'application/json' }), 'blindfold-drop-recovery.json'); }}>Download latest recovery file</button>
-            <label>Restore an existing drop<input type="file" accept="application/json" disabled={!session || running} onChange={(event) => { const selected = event.target.files?.[0]; event.target.value = ''; if (selected) void recoverDrop(selected); }} /></label>
+            <div className="panel-head"><h2>Content recovery</h2></div>
+            <p className="note">A recovery file downloads before registration. Keep it and your original creator secret backup. Import it to retry key delivery or restore content after an indexer restart.</p>
+            <button disabled={!backup} onClick={() => { if (backup) triggerDownload(new Blob([backup], { type: 'application/json' }), 'blindfold-content-recovery.json'); }}>Download latest recovery file</button>
+            <label>Restore existing content<input type="file" accept="application/json" disabled={!session || running} onChange={(event) => { const selected = event.target.files?.[0]; event.target.value = ''; if (selected) void recoverDrop(selected); }} /></label>
           </section>
 
           <section className="panel">
-            <div className="panel-head"><h2>New drop</h2><button className="primary" disabled={!session || running || !title.trim() || !(file || textContent.trim())} onClick={() => void submit()}>Encrypt + Register + Provision</button></div>
+            <div className="panel-head"><h2>New content</h2><button className="primary" disabled={!session || running || !title.trim() || !(file || textContent.trim())} onClick={() => void submit()}>Encrypt + Register + Provision</button></div>
             <div className="form-grid">
-              <label>Drop ID<input value={dropId} onChange={(event) => setDropId(event.target.value)} inputMode="numeric" /></label>
+              <label>Content ID<input value={dropId} onChange={(event) => setDropId(event.target.value)} inputMode="numeric" /></label>
               <label>Price (NIGHT)<input value={priceNight} onChange={(event) => setPriceNight(event.target.value)} inputMode="decimal" /></label>
               <label className="wide-field">Title<input value={title} onChange={(event) => setTitle(event.target.value)} /></label>
               <label>File<input type="file" onChange={(event) => setFile(event.target.files?.[0] ?? null)} /></label>
@@ -290,9 +305,9 @@ export function App() {
           </section>
 
           <section className="panel">
-            <div className="panel-head"><h2>Escrowed purchases (my drops)</h2><button onClick={() => void refreshEscrow()} disabled={!session}>Refresh</button></div>
-            {!session ? <p className="note">Connect a wallet to inspect escrow.</p> : escrow.length === 0 ? <p className="note">Nothing to withdraw.</p> :
-              <ul className="drops">{escrow.map((entry) => <li key={entry.index.toString()}><span>purchase {entry.index.toString()} · drop {entry.dropId.toString()} · {formatNight(entry.valueStar)} NIGHT</span><button onClick={() => void withdraw(entry.index)}>Withdraw</button></li>)}</ul>}
+            <div className="panel-head"><h2>Sales awaiting withdrawal</h2><button onClick={() => void refreshEscrow()} disabled={!session}>Refresh</button></div>
+            {!session ? <p className="note">Connect a wallet to see your sales.</p> : escrow.length === 0 ? <p className="note">No sales yet. Each purchase shows up here until you withdraw it.</p> :
+              <ul className="drops">{escrow.map((entry) => <li key={entry.index.toString()}><span>sale #{entry.index.toString()} · content {entry.dropId.toString()} · {formatNight(entry.valueStar)} NIGHT</span><button onClick={() => void withdraw(entry.index)}>Withdraw</button></li>)}</ul>}
           </section>
 
           <section className="panel">

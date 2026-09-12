@@ -24,7 +24,7 @@ test("provision flow reaches the provision step and posts a sealed payload", asy
   const backupDownload = page.waitForEvent('download');
   await page.getByRole("button", { name: /Encrypt \+ Register \+ Provision/ }).click();
   const backup = await backupDownload;
-  await expect(page.getByText(/Drop 1 is live/)).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText(/Content 1 is live/)).toBeVisible({ timeout: 30_000 });
 
   expect(sealed).not.toBeNull();
   const opened = sodium.crypto_box_seal_open(new Uint8Array(sealed!), enclave.publicKey, enclave.privateKey);
@@ -36,8 +36,8 @@ test("provision flow reaches the provision step and posts a sealed payload", asy
   // A restarted enclave has a new provisioning key and an empty catalog.
   enclave = sodium.crypto_box_keypair();
   sealed = null;
-  await page.getByLabel('Restore an existing drop').setInputFiles((await backup.path())!);
-  await expect(page.getByText(/Drop 1 restored/)).toBeVisible({ timeout: 30_000 });
+  await page.getByLabel('Restore existing content').setInputFiles((await backup.path())!);
+  await expect(page.getByText(/Content 1 restored/)).toBeVisible({ timeout: 30_000 });
   const restored = sodium.crypto_box_seal_open(new Uint8Array(sealed!), enclave.publicKey, enclave.privateKey);
   expect(JSON.parse(new TextDecoder().decode(restored))).toEqual(payload);
 });

@@ -23,7 +23,7 @@ const indexerUrl = import.meta.env.VITE_INDEXER_URL ?? 'http://localhost:8080';
 async function makeApi(): Promise<DropApi> {
   if (!FAKE) return new HttpDropApi(indexerUrl);
   const mock = new MockDropApi();
-  await mock.seedDrop({ drop_id: 1, price_star: '1000000', title: 'Demo drop (fake wallet)', h_content: '' }, new TextEncoder().encode('Hello from Blindfold. This content was unlocked with a fake wallet.'));
+  await mock.seedDrop({ drop_id: 1, price_star: '1000000', title: 'Demo content (fake wallet)', h_content: '' }, new TextEncoder().encode('Hello from Blindfold. This content was unlocked with a fake wallet.'));
   return mock;
 }
 
@@ -180,7 +180,7 @@ export function App() {
         {!purchase ? (
           <section className="panel"><div className="panel-head"><h2>Catalog</h2><button onClick={() => void loadCatalog()}>Refresh</button></div>
             <label className="remember"><input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} /> Keep on this device for 24h (on by default; uncheck to keep the key only in this tab)</label>
-            {catalog.length === 0 ? <p className="note">No drops yet.</p> :
+            {catalog.length === 0 ? <p className="note">Nothing published yet.</p> :
               <ul className="drops">{catalog.map((d) => {
                 const price = BigInt(d.price_star);
                 const affordable = Boolean(session && bal && canBuy(bal.privateNight, price));
