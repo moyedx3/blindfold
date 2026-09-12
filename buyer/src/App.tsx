@@ -13,6 +13,7 @@ import { fromRecoveryFile, toRecoveryFile, type Purchase } from './purchase';
 import { detectKind, mimeFor } from './render';
 import { sodiumReady } from './seal';
 import { availableWallets, balances, openSession, FAKE, type Session } from './session';
+import './styles.css';
 // Unlocked, ManualUnlock, Clock, triggerDownload: carried over unchanged from the prototype.
 
 const POLL_MS = 3000;
@@ -108,17 +109,17 @@ export function App() {
         {error ? <p className="error">{error}</p> : null}
         {!session ? (
           <section className="panel"><div className="panel-head"><h2>Connect a Midnight wallet</h2><button onClick={rescanWallets}>Rescan wallets</button></div>
-            {wallets.length === 0 ? <p className="note">No Midnight wallet found. Install Lace or 1AM and reload.</p> :
+            {wallets.length === 0 ? <p className="note">No Midnight wallet found. Install Lace and reload.</p> :
               <ul className="drops">{wallets.map((w) => <li key={w.key}><strong>{w.name}</strong><button className="primary" disabled={busy} onClick={() => void connect(w)}>Connect</button></li>)}</ul>}
           </section>) : null}
         {session && bal ? <p className="note">Shielded NIGHT: {formatNight(bal.shieldedNight)} · DUST: {bal.dust.toString()}</p> : null}
-        {session && !purchase ? (
+        {!purchase ? (
           <section className="panel"><div className="panel-head"><h2>Catalog</h2><button onClick={() => void loadCatalog()}>Refresh</button></div>
             <label className="remember"><input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} /> Keep on this device for 24h (on by default; uncheck to keep the key only in this tab)</label>
             {catalog.length === 0 ? <p className="note">No drops yet.</p> :
               <ul className="drops">{catalog.map((d) => <li key={d.drop_id}><div><strong>{d.title}</strong><span className="price">{formatNight(d.price_star)} NIGHT</span></div>
-                <button className="primary" disabled={busy} onClick={() => void buy(d)}>{busy ? 'proving…' : 'Buy'}</button></li>)}</ul>}
-            <p className="note">Buying sends one shielded transaction from your wallet; proving takes 20 to 60 seconds.</p>
+                <button className="primary" disabled={busy || !session} onClick={() => void buy(d)}>{busy ? 'proving…' : 'Buy'}</button></li>)}</ul>}
+            <p className="note">{session ? 'Buying sends one shielded transaction from your wallet; proving takes 20 to 60 seconds.' : 'Connect a wallet above to buy. Browsing is free.'}</p>
           </section>) : null}
         {purchase && !unlock ? (
           <section className="panel"><div className="panel-head"><h2>Paid for “{purchase.title}”</h2><button onClick={discardKey}>Discard key</button></div>
