@@ -62,6 +62,7 @@ export function App() {
   const refreshBalances = useCallback(async (s: Session) => {
     const [b, priv] = await Promise.all([balances(s.wallet), s.client.privateBalance()]);
     setBal({ publicNight: b.unshieldedNight, privateNight: priv, dust: b.dust });
+    return priv;
   }, []);
 
   const connect = useCallback(async (choice: WalletChoice) => {
@@ -78,8 +79,8 @@ export function App() {
       // The wallet learns about the new coin a few seconds after the block; poll up to 2 min.
       const target = (bal?.privateNight ?? 0n) + amountStar;
       for (let i = 0; i < 40; i += 1) {
-        await refreshBalances(session);
-        if ((await session.client.privateBalance()) >= target) break;
+        const priv = await refreshBalances(session);
+        if (priv >= target) break;
         await new Promise((r) => setTimeout(r, 3000));
       }
     } catch (e) { setError(explainWalletError(e)); }
@@ -121,10 +122,20 @@ export function App() {
       // Keep the purchase in state and persisted — the key already exists and the poller keeps
       // running. The user can dismiss ("Keep waiting") or give up on it ("Discard key").
     } finally {
+      if (session) { try { await refreshBalances(session); } catch { /* balance line refreshes on the next action */ } }
       setBusy(false);
-      if (session) void refreshBalances(session);
     }
   }, [api, session, remember, busy, refreshBalances]);
+
+  // Which drop (if any) the current private balance can't cover, and how much to top up to fix it.
+  const firstUnaffordable = bal ? catalog.find((d) => !canBuy(bal.privateNight, BigInt(d.price_star))) : undefined;
+  const topUpHint = (() => {
+    if (!session || !bal || !firstUnaffordable) return '';
+    const suggestion = smallestTopUpCovering(BigInt(firstUnaffordable.price_star), bal.privateNight);
+    if (suggestion !== null) return ` Top up ${formatNight(suggestion)} NIGHT to buy “${firstUnaffordable.title}”.`;
+    const biggest = TOP_UP_DENOMINATIONS_STAR[TOP_UP_DENOMINATIONS_STAR.length - 1];
+    return ` “${firstUnaffordable.title}” costs more than one ${formatNight(biggest)} NIGHT top-up covers; top up more than once.`;
+  })();
 
   const reset = useCallback(() => { setPurchase(null); setUnlock(null); pollerRef.current = null; clearPurchase(); }, []);
   const downloadRecovery = useCallback(() => { if (!purchase) return; triggerDownload(new Blob([JSON.stringify(toRecoveryFile(purchase), null, 2)], { type: 'application/json' }), `blindfold-recovery-${purchase.dropId}-${purchase.id}.json`); }, [purchase]);
@@ -161,7 +172,7 @@ export function App() {
                 const affordable = Boolean(session && bal && canBuy(bal.privateNight, price));
                 return <li key={d.drop_id}><div><strong>{d.title}</strong><span className="price">{formatNight(d.price_star)} NIGHT</span></div>
                   <button className="primary" disabled={busy || topping || !session || !affordable} onClick={() => void buy(d)}>{busy ? 'proving…' : affordable || !session ? 'Buy' : 'Top up first'}</button></li>; })}</ul>}
-            <p className="note">{!session ? 'Connect a wallet above to buy. Browsing is free.' : 'Buying sends one shielded transaction from your private balance; proving takes 20 to 60 seconds.'}{session && bal && catalog.some((d) => !canBuy(bal.privateNight, BigInt(d.price_star))) ? ` Top up ${formatNight(smallestTopUpCovering(BigInt(catalog[0].price_star), bal.privateNight) ?? 50_000_000n)} NIGHT to buy the first drop.` : ''}</p>
+            <p className="note">{!session ? 'Connect a wallet above to buy. Browsing is free.' : 'Buying sends one shielded transaction from your private balance; proving takes 20 to 60 seconds.'}{topUpHint}</p>
           </section>) : null}
         {purchase && !unlock ? (
           <section className="panel"><div className="panel-head"><h2>Paid for “{purchase.title}”</h2><button onClick={discardKey}>Discard key</button></div>
