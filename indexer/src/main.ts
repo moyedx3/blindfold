@@ -24,8 +24,16 @@ if (!tee.isDev) {
 }
 
 const reader = new MidnightLedgerReader({ indexerUrl: cfg.indexerUrl, indexerWsUrl: cfg.indexerWsUrl, contractAddress: cfg.contractAddress, networkId: cfg.network });
-const first = await reader.read(); // fails fast if the address has no state
-log(`contract ${cfg.contractAddress} on ${cfg.network}: ${first.drops.size} drops, ${first.purchaseCount} purchases`);
+try {
+  const first = await reader.read();
+  log(`contract ${cfg.contractAddress} on ${cfg.network}: ${first.drops.size} drops, ${first.purchaseCount} purchases`);
+} catch (e) {
+  // Do not crash-loop. A CVM can boot before the contract is deployed, or while the
+  // public Midnight indexer is unreachable. Health and attestation stay available and
+  // the watcher retries the read every 30 s until the contract state is readable;
+  // provisioning is refused until then because the price check needs the chain.
+  log(`contract ${cfg.contractAddress} on ${cfg.network} is not readable yet (${(e as Error).message}); serving attestation and retrying`);
+}
 
 const catalog = new Catalog();
 const content = new FsBucket(join(cfg.dataDir, 'content'));
