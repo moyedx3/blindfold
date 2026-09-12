@@ -24,8 +24,11 @@ purchase-to-key-delivery E2E test, and an indexer restart followed by re-provisi
 bundle. Later the same day the contract was deployed to Preprod and the indexer went live in a Phala
 CVM: a genuine TDX quote verifies as `UpToDate`, its `report_data` is bound to the provisioning key, and
 `npm run smoke:live` passes against the values in `deploy/networks.json`. A complete creator-to-buyer run
-with real Lace wallets on Preprod is still to be done. The team's live checklist of what is done, verified,
-and still open is [`docs/status.md`](docs/status.md).
+with real Lace wallets on Preprod is still to be done. Since that Preprod deployment, `purchase` was changed
+to require the contract's own bNIGHT instead of shielded NIGHT (public Midnight networks have none); the
+bNIGHT contract's redeploy to Preprod and CVM re-pin is Lane E Task 7, still pending, so until it lands the
+Preprod/CVM values recorded above and in `deploy/networks.json` describe the previous, pre-bNIGHT contract.
+The team's live checklist of what is done, verified, and still open is [`docs/status.md`](docs/status.md).
 
 A complete creator-to-buyer Lace run on Preprod, the demo video, and mainnet readiness checks remain
 TODO. See the [deployment verification record and TODOs](docs/deployment-verification-2026-09-11.md).
@@ -34,12 +37,15 @@ No placeholder in `deploy/networks.json` should be presented as a live deploymen
 ## How Midnight is used
 
 - [`contract/src/blindfold.compact`](contract/src/blindfold.compact) implements `createDrop`, `purchase`,
-  and `withdraw`. `purchase` receives shielded NIGHT, enforces the price, escrows the coin, and records the
-  buyer's disclosed one-time encryption key atomically. `withdraw` returns escrow to the creator after a
-  secret-witness authorization check.
+  `withdraw`, `wrap`, and `unwrap`. `purchase` receives bNIGHT (the contract's own shielded token), enforces
+  the price, escrows the coin, and records the buyer's disclosed one-time encryption key atomically.
+  `withdraw` returns escrow to the creator after a secret-witness authorization check.
 - The buyer and creator connect through DApp Connector v4 and Midnight.js providers. Lace is the verified
   demo wallet; another compatible connector can be discovered through the same interface but must be
   tested before it is claimed as supported.
+- Public Midnight networks have no shielded NIGHT to spend directly, so `wrap` mints bNIGHT against public
+  NIGHT the caller sends, in fixed 5/10/50 NIGHT denominations. `unwrap` converts bNIGHT the contract holds
+  back into public NIGHT for the caller.
 - The indexer reads the contract's public ledger from Midnight indexer GraphQL. What appears publicly is
   the contract call, drop ID, one-time key, paid value, and normal Zswap/DUST transaction data—not a wallet
   address or wallet public key.

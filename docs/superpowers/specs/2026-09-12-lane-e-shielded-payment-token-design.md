@@ -24,8 +24,8 @@ devnet only because the dev genesis seeds shielded native coins. On public netwo
 - The Korean translation (`docs.midnightkorea.org/tokens/overview`) still says NIGHT can move between the
   two states; that sentence is from an older revision and the English source has been rewritten.
 
-So Blindfold must issue its own shielded token. This is the same shape as "shield, then spend" in
-shield-then-spend and is the only design that also holds on mainnet.
+So Blindfold must issue its own shielded token. This is the same "shield, then spend" shape used by other
+shielded-pool designs, and is the only design that also holds on mainnet.
 
 ## 2. Goals and non-goals
 

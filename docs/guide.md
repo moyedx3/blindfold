@@ -125,6 +125,7 @@ provisioning, dispatch-blob, and content-encryption code carries over from it.
 | Lane B: `packages/midnight-web` + `buyer/` | **Merged to main 2026-09-05.** Shared wallet package (DApp-connector discovery and connection, the official Lace adapter as midnight-js providers, `BlindfoldClient` over the compiled contract, fakes) and the buyer app (connect → catalog → buy with one shielded transaction → poll → trial-open → decrypt; recovery file; manual unlock; 24 h local persistence on by default; error hints). 14 + 25 unit tests, a Playwright smoke through a fake connector and mock indexer, and a real Lace purchase on the devnet that unlocked in ~20 s. Plan: `docs/superpowers/plans/2026-09-05-lane-b-buyer-app.md`. |
 | Lane C: `creator/` | **Merged to `main` 2026-09-12.** Browser encryption, upload, contract registration, attestation gate, sealed provisioning, creator-secret persistence with overwrite protection, encrypted drop recovery, escrow listing, and withdraw UX. Unit tests and the fake-wallet Playwright smoke pass; the real Lace creator flow remains. Plan: `docs/superpowers/plans/2026-09-05-lane-c-creator-app.md`. |
 | Lane D: deploy, README, demo | **Merged to `main` 2026-09-12.** Local compose/seeder/recovery, Preprod and Phala runbooks, digest/RTMR3 verification, CI, README, readiness notes, and demo script; re-verified on the local devnet on 2026-09-12. Preprod, Phala, live-wallet, and video steps remain external release checks. `spike/` is history only. |
+| Lane E: bNIGHT shielded payment token | **On `lane-e`.** Public Midnight networks have no shielded NIGHT, so the contract mints its own (`wrap`/`unwrap`) against public NIGHT in fixed 5/10/50 NIGHT denominations; buyer/creator apps show it as one Private balance. Tasks 1–4 (contract, shared client, buyer app, creator app) and Task 5 (indexer e2e, local demo, docs) are done on the branch. Plan: `docs/superpowers/plans/2026-09-12-lane-e-shielded-payment-token.md`. `Merged to main` after Task 7 (Preprod redeploy and CVM re-pin). |
 | Hackathon registration | Registration opened 2026-09-01: https://luma.com/2pnv2fwk |
 | Submission | Public GitHub repo with README, "how to run / demo flow", optional video, and a section on how Midnight is used. Judges clone, compile, and check that the README matches. Preview/Preprod testnet or local devnet are all allowed. |
 
@@ -176,7 +177,7 @@ creator app   createDrop(dropId, price, commit) on the contract  (wallet tx)
               verify TEE attestation, seal {dropId, K_drop, h_content} to the enclave   (carried over)
 
 buyer app     fresh X25519 keypair (e_pub, e_priv)
-              purchase(dropId, e_pub, coin{value >= price, color = NIGHT})   via Lace / 1AM
+              purchase(dropId, e_pub, coin{value >= price, color = bNIGHT (minted by wrap)})   via Lace / 1AM
                 -> contract: assert price, receiveShielded, purchases[i] = e_pub, escrow[i] = coin
 
 indexer(TEE)  watch purchases map -> for each new e_pub: crypto_box_seal(K_drop, e_pub) -> publish blob
@@ -336,6 +337,7 @@ demo seeder (Lane D) compute it exactly that way.
 | B | `docs/superpowers/plans/2026-09-05-lane-b-buyer-app.md` | `packages/midnight-web/` (wallet + contract client, shared) and `buyer/` | Merged 2026-09-05 |
 | C | `docs/superpowers/plans/2026-09-05-lane-c-creator-app.md` | `creator/` | Merged to `main` 2026-09-12; real Lace creator flow pending |
 | D | `docs/superpowers/plans/2026-09-05-lane-d-deploy-demo.md` | devnet/Preprod/Phala runbooks, one-shot local demo, CI, submission README | Merged to `main` 2026-09-12; external release checks remain |
+| E | `docs/superpowers/plans/2026-09-12-lane-e-shielded-payment-token.md` | bNIGHT: contract `wrap`/`unwrap`, shared client, buyer/creator Private balance panels, indexer e2e, docs | On `lane-e`; `Merged to main` after Task 7 (Preprod redeploy, CVM re-pin) |
 
 Cross-lane contracts are the wire formats in spec section 6 and the interfaces listed at the top of each
 task. The fakes Lane C's plan relies on exist and are exported from `@blindfold/midnight-web`

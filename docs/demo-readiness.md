@@ -6,6 +6,13 @@ Blindfold is designed as a real-chain, real-TEE prototype demo. The final claim 
 only after the Preprod contract, Phala CVM, and real-wallet flow are completed and their values are recorded
 in `deploy/networks.json`. Until then, describe those parts as implemented but awaiting public deployment.
 
+Public Midnight networks have no shielded NIGHT, so the contract mints its own shielded token (bNIGHT)
+against public NIGHT in fixed 5/10/50 NIGHT denominations. State the privacy claim precisely: "The buyer
+moves public NIGHT into a private balance in fixed denominations; the purchase spends that private
+balance, so the chain sees a drop id and a one-time key, not a wallet. The content key is delivered by an
+attested TEE." The top-up transaction is public by construction; the anonymity set of a purchase is
+everyone who topped up the same denomination and has not spent it in a linkable way.
+
 ## Already evidenced
 
 Latest run: [2026-09-10/11 local devnet verification](deployment-verification-2026-09-11.md),
@@ -70,7 +77,9 @@ wallet test performed during this run. Public testnet and mainnet readiness rema
 
 ## Presenter-safe wording
 
-> Blindfold demonstrates contract-enforced shielded payment and content-key delivery through an attested
-> TEE. The creator encrypts and verifies attestation in the browser, while the buyer decrypts locally. It is
-> a working privacy prototype, with measurement rotation, key re-provisioning, service availability, and
-> wallet compatibility still handled as explicit operational constraints rather than production guarantees.
+> The buyer moves public NIGHT into a private balance in fixed denominations; the purchase spends that
+> private balance, so the chain sees a drop id and a one-time key, not a wallet. The content key is
+> delivered by an attested TEE. The creator encrypts and verifies attestation in the browser, while the
+> buyer decrypts locally. It is a working privacy prototype, with measurement rotation, key
+> re-provisioning, service availability, and wallet compatibility still handled as explicit operational
+> constraints rather than production guarantees.

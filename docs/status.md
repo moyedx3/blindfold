@@ -8,7 +8,8 @@
 ## 한 줄 답
 
 **로컬 데모는 완성·검증됐고, 2026-09-12에 Preprod 컨트랙트와 Phala CVM(실제 TDX)까지 올라가 `smoke:live`가 통과했다.**
-남은 것은 실제 Lace 두 지갑으로 공개 환경에서 등록 → 구매 → withdraw 한 바퀴(E), 그리고 영상·제출물(F)이다. 섹션 3을 순서대로 하면 된다.
+남은 것은 bNIGHT 브랜치(`lane-e`) 마무리(E-1), 실제 Lace 두 지갑으로 공개 환경에서 등록 → 구매 → withdraw 한
+바퀴(E-2), 그리고 영상·제출물(F)이다. 섹션 3을 순서대로 하면 된다.
 
 ## 1. 무엇이 어디까지 됐나
 
@@ -43,8 +44,11 @@
 - [ ] Lace 프로필 두 개(크리에이터, 구매자), 둘 다 네트워크 **Undeployed**, proof server **Local (http://localhost:6300)**.
 - [ ] `npm run demo:local`로 스택을 올리고, 두 지갑의 주소를 genesis 지갑에서 fund: `npm run fund -w contract -- <mn_addr…> <mn_shield-addr…> 1000 --network undeployed` (Preprod 지갑을 준비한 뒤로는 상태 파일의 기본 네트워크가 preprod라 `--network`를 꼭 붙인다)
 - [ ] 크리에이터 앱 `VITE_INDEXER_URL=http://127.0.0.1:8080 npm run dev -w creator` (5175): dev mode 체크 → 파일 선택 → Encrypt + Register + Provision. 복구 파일이 내려받아지는지, 카탈로그(`/catalog`)에 뜨는지.
-- [ ] 구매자 앱 `VITE_INDEXER_URL=http://127.0.0.1:8080 npm run dev -w buyer` (5173): 구매 → 언락 → 복호화된 파일이 원본과 같은지.
-- [ ] 크리에이터 앱에서 Escrowed purchases → Withdraw 성공.
+- [ ] 구매자 앱 `VITE_INDEXER_URL=http://127.0.0.1:8080 npm run dev -w buyer` (5173): **Top up 5/10/50**(고정
+      단위)로 Private balance를 채우고 → 구매(Private balance 차감, 새 top-up 없이 한 번 승인) → 언락 →
+      복호화된 파일이 원본과 같은지.
+- [ ] 크리에이터 앱에서 Escrowed purchases → Withdraw 성공 → Private balance 패널에서 **Cash out to public
+      NIGHT** → 공개 NIGHT 잔액이 늘어나는지.
 - [ ] `npm run demo:stop` 후 인덱서만 다시 띄우고, 크리에이터 앱 "Restore an existing drop"에 복구 파일을 넣어 등록 tx 없이 재-provision 되는지.
 - [ ] 크리에이터 secret export → 브라우저 저장소 비움 → import → 같은 drop의 withdraw가 되는지. 다른 secret import 시 확인창이 뜨는지.
 - [ ] 결과를 `docs/deployment-verification-<날짜>.md`로 기록.
@@ -82,11 +86,31 @@ DUST가 쌓이는 데 시간이 걸리므로 가장 먼저 시작한다.
 - [ ] **브라우저에서 실전 확인:** 크리에이터 앱을 `VITE_INDEXER_URL=<endpoint> VITE_EXPECTED_MEASUREMENT_HEX=<rtmr3>`로 띄워 실제 quote로 provision이 통과하는지. `creator/src/qvl-verifier.ts`는 아직 실제 quote를 본 적이 없다. 실패하면 이슈로 등록하고 `attest:inspect` 결과와 대조.
 - [ ] 공개 네트워크에 붙었을 때 dev mode 체크박스가 비활성인지.
 
-### E. 공개 환경에서 A 반복 (C, D 다음) — 담당: ___
+### E-1. bNIGHT (Lane E) — 담당: ___
 
-- [ ] 크리에이터: Preprod Lace로 등록·provision (endpoint와 RTMR3는 D의 값).
+Preprod와 메인넷에는 shielded NIGHT가 없다(`docs/superpowers/specs/2026-09-12-lane-e-shielded-payment-token-design.md`
+1절). 그래서 컨트랙트가 공개 NIGHT를 5·10·50 단위로 받아 자체 shielded 토큰(bNIGHT)을 발행하도록(`wrap`) 바꾸고,
+구매는 bNIGHT 지출로, 크리에이터는 `withdraw` 후 `unwrap`으로 공개 NIGHT를 돌려받는다. UI에는 "wrap" 대신
+**Private balance** 하나만 보인다. 브랜치 `lane-e`, 계획: `docs/superpowers/plans/2026-09-12-lane-e-shielded-payment-token.md`.
+
+- [x] Task 1. 컨트랙트 `wrap`/`unwrap` 서킷과 devnet flow 테스트 (`contract/test/flow.test.ts`, 11 passed).
+- [x] Task 2. 공용 클라이언트 `packages/midnight-web`에 wrap/unwrap/privateBalance/bNIGHT color.
+- [x] Task 3. 구매자 앱: Private balance 패널(Top up 5/10/50), Buy는 private balance 확보 후에만.
+- [x] Task 4. 크리에이터 앱: Private balance 패널, Cash out to public NIGHT.
+- [x] Task 5. 인덱서 devnet e2e가 `wrap` 후 구매하도록 수정(`indexer/test/e2e.devnet.test.ts`, 2 passed), 로컬
+      데모(`npm run demo:local`) 재확인, `contract/test/compile.test.ts`에 wrap/unwrap 아티팩트 추가, 문서
+      갱신(이 파일 포함) — 2026-09-12 · 증거: `docs/deployment-verification-2026-09-12-bnight.md`.
+- [ ] Task 6. 전체 브랜치 검증 (`npm test`, 빌드, `qa:secrets`, e2e 스모크, CI green on `lane-e`).
+- [ ] Task 7. Preprod 재배포와 CVM 재핀 (유지보수자 실행: Phala 로그인, 펀딩된 배포 지갑 필요). 완료 전까지
+      `deploy/networks.json`과 `README.md` 상태 문단의 Preprod 값은 **이전(비-bNIGHT) 컨트랙트**를 가리킨다.
+
+### E-2. 공개 환경에서 A 반복 (C, D, E-1/Task 7 다음) — 담당: ___
+
+- [ ] 크리에이터: Preprod Lace로 등록·provision (endpoint와 RTMR3는 Task 7 재배포 이후 값).
+- [ ] 구매자: Preprod Lace로 Top up(5/10/50 NIGHT 중 하나로 Private balance 채우기).
 - [ ] 구매자: Preprod Lace로 구매·언락·복호화. explorer에서 지갑 주소가 컨트랙트 인자에 없는 것 확인.
 - [ ] 크리에이터 withdraw.
+- [ ] 크리에이터 Cash out to public NIGHT, 공개 NIGHT 잔액이 늘어나는지 확인.
 - [ ] 기록을 남기고, `README.md` 상태 문단을 갱신.
 
 ### F. 제출물 (9/26까지) — 담당: ___

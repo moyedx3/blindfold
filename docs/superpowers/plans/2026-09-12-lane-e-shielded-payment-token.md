@@ -14,7 +14,7 @@
 
 - Work on branch `lane-e`. Never commit to `main`; never push `main` from this lane.
 - Pinned versions stay: Compact 0.31.1, midnight-js 4.1.1, ledger-v8 8.1.0, compact-runtime 0.16.0, one copy of `@midnight-ntwrk/onchain-runtime-v3` 3.0.0 (`npm run check:runtime-copies` must print `ok`).
-- No references to other chains in tracked text. No seeds, mnemonics, wallet addresses of real people, `.midnight-state.json`, wallet state, or `.env` files committed.
+- Don't name the other major shielded-pool coin (or its ticker) in tracked text. No seeds, mnemonics, wallet addresses of real people, `.midnight-state.json`, wallet state, or `.env` files committed.
 - Denominations are exactly 5 000 000, 10 000 000, 50 000 000 STAR (5, 10, 50 NIGHT), enforced in the circuit and mirrored in `TOP_UP_DENOMINATIONS_STAR`.
 - The domain separator is `pad(32, "blindfold:bNIGHT")` in Compact and the same 32 bytes (UTF-8 `blindfold:bNIGHT`, zero-padded to 32) in TypeScript. Token name in code/docs: `bNIGHT`; UI label: **Private balance**. The word "wrap" never appears in UI copy.
 - Top up and Buy are separate actions. Buy is disabled (label `Top up first`) when `privateBalance < price`; there is no automatic wrap-then-buy.
@@ -880,7 +880,8 @@ Run: `npm run demo:local` then `npm run demo:stop`. Expected: `Local stack is re
 - `docs/status.md`: add `### E-1. bNIGHT (Lane E)` block above the current E with checkboxes for Tasks 1–7; rename the current "E" to "E-2. 공개 환경에서 A 반복" and add the top-up and cash-out steps to A and E-2.
 - `docs/deployment-verification-2026-09-12-bnight.md`: record the finding (no shielded NIGHT on public networks, with the three quotes from the spec), what changed, and the devnet evidence from Tasks 1 and 5 (test names and counts).
 
-Run: `npm run qa:secrets && true` → `0`.
+Run `npm run qa:secrets`, then confirm `docs` and `README.md` contain no mention of the other major
+shielded-pool coin's name or ticker (case-insensitive search) → no hits.
 
 - [ ] **Step 4: Commit**
 
