@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { explainWalletError, type WalletChoice } from "@blindfold/midnight-web/wallet";
 import { fetchAttestation, postProvision, uploadContentBlob } from "./api";
-import { fromHex, utf8Bytes } from "./bytes";
+import { fromHex, toHex, utf8Bytes } from "./bytes";
+import { allowsDevAttestation, exportRecovery, importRecovery, verifyRecoveryDrop } from "./recovery";
 import { verifyAttestationOrThrow } from "./attestation";
 import { escrowForDrops, registerDrop, suggestDropId } from "./chain";
 import { encryptContent } from "./content";
@@ -37,6 +38,7 @@ export function App() {
   const [file, setFile] = useState<File | null>(null);
   const [steps, setSteps] = useState<Steps>(idleSteps);
   const [message, setMessage] = useState("");
+  const [backup, setBackup] = useState<string | null>(null);
   const [escrow, setEscrow] = useState<Array<{ index: bigint; dropId: bigint; valueStar: bigint }>>([]);
   const inFlight = useRef(false);
   const running = Object.values(steps).some((state) => state === "running");
@@ -63,6 +65,39 @@ export function App() {
     void refreshEscrow();
   }, [refreshEscrow]);
 
+  async function provisioningKey(): Promise<Uint8Array> {
+    if (!session) throw new Error('Connect a wallet first');
+    const attestation = await fetchAttestation(indexerUrl);
+    if (attestation.quote_hex === 'dev') {
+      if (!devMode || !allowsDevAttestation(session.network, indexerUrl)) throw new Error('Dev attestation is allowed only on the local undeployed network');
+      return fromHex(attestation.provisioning_pubkey_hex);
+    }
+    return verifyAttestationOrThrow(attestation, expectedMeasurement);
+  }
+
+  async function recoverDrop(selected: File): Promise<void> {
+    if (!session || inFlight.current) return;
+    inFlight.current = true;
+    setSteps({ ...idleSteps, attest: 'running' });
+    setMessage('');
+    try {
+      if (selected.size > 220 * 1024 * 1024) throw new Error('Recovery file is too large');
+      const saved = await importRecovery(await selected.text(), loadOrCreateSecret(), session.network, session.contractAddress);
+      await verifyRecoveryDrop(saved, await session.client.ledger());
+      const key = await provisioningKey();
+      setSteps({ encrypt: 'done', register: 'done', attest: 'done', provision: 'running' });
+      await uploadContentBlob(indexerUrl, saved.payload.h_content, fromHex(saved.blobHex));
+      await postProvision(indexerUrl, await sealProvisionPayload(saved.payload, key));
+      rememberDrop({ dropId: saved.payload.drop_id, title: saved.payload.title, priceStar: saved.payload.price_star, contractAddress: session.contractAddress, hContent: saved.payload.h_content });
+      setSteps({ encrypt: 'done', register: 'done', attest: 'done', provision: 'done' });
+      setMessage(`Drop ${saved.payload.drop_id} restored. No new registration transaction was sent.`);
+      await refreshEscrow();
+    } catch (error) {
+      setSteps({ ...idleSteps, provision: 'error' });
+      setMessage(explainWalletError(error));
+    } finally { inFlight.current = false; }
+  }
+
   async function submit(): Promise<void> {
     if (!session || inFlight.current) return;
     inFlight.current = true;
@@ -77,6 +112,10 @@ export function App() {
       setSteps({ ...idleSteps, encrypt: "running" });
       const plaintext = file ? new Uint8Array(await file.arrayBuffer()) : utf8Bytes(textContent);
       const encrypted = await encryptContent(plaintext);
+      const payload = buildProvisionPayload({ dropId: id, priceStar, kDrop: encrypted.kDrop, hContent: encrypted.hContent, title });
+      const recovery = await exportRecovery({ network: session.network, contractAddress: session.contractAddress, payload, blobHex: toHex(encrypted.blob) }, loadOrCreateSecret());
+      setBackup(recovery);
+      triggerDownload(new Blob([recovery], { type: 'application/json' }), `blindfold-drop-${id}-recovery.json`);
       await uploadContentBlob(indexerUrl, encrypted.hContent, encrypted.blob);
 
       setSteps({ ...idleSteps, encrypt: "done", register: "running" });
@@ -84,17 +123,9 @@ export function App() {
       rememberDrop({ dropId: id, title, priceStar: priceStar.toString(), contractAddress: session.contractAddress, hContent: encrypted.hContent });
 
       setSteps({ ...idleSteps, encrypt: "done", register: "done", attest: "running" });
-      const attestation = await fetchAttestation(indexerUrl);
-      let enclavePubkey: Uint8Array;
-      if (attestation.quote_hex === "dev") {
-        if (!devMode) throw new Error('attest: the indexer runs without a TEE (quote "dev"). Enable "dev mode" only on a local devnet.');
-        enclavePubkey = fromHex(attestation.provisioning_pubkey_hex);
-      } else {
-        enclavePubkey = await verifyAttestationOrThrow(attestation, expectedMeasurement);
-      }
+      const enclavePubkey = await provisioningKey();
 
       setSteps({ ...idleSteps, encrypt: "done", register: "done", attest: "done", provision: "running" });
-      const payload = buildProvisionPayload({ dropId: id, priceStar, kDrop: encrypted.kDrop, hContent: encrypted.hContent, title });
       await postProvision(indexerUrl, await sealProvisionPayload(payload, enclavePubkey));
 
       setSteps({ encrypt: "done", register: "done", attest: "done", provision: "done" });
@@ -163,14 +194,21 @@ export function App() {
             <p className="note">This 32-byte secret authorizes withdrawals. Losing it means losing access to escrowed NIGHT.</p>
             <div className="actions">
               <button onClick={exportSecret}>Export creator secret</button>
-              <label>Import creator secret<input type="file" accept="application/json" onChange={(event) => { const selected = event.target.files?.[0]; if (selected) void importSecret(selected); }} /></label>
+              <label>Import creator secret<input type="file" disabled={running} accept="application/json" onChange={(event) => { const selected = event.target.files?.[0]; if (selected) void importSecret(selected); }} /></label>
             </div>
           </section>
 
           <section className="panel">
             <div className="panel-head"><h2>Indexer trust</h2></div>
             <label>Expected measurement (RTMR3 hex)<input value={expectedMeasurement} onChange={(event) => setExpectedMeasurement(event.target.value)} /></label>
-            <label className="remember"><input type="checkbox" checked={devMode} onChange={(event) => setDevMode(event.target.checked)} /> dev mode: accept an indexer without a TEE (local devnet only)</label>
+            <label className="remember"><input type="checkbox" disabled={!session || !allowsDevAttestation(session.network, indexerUrl)} checked={devMode && Boolean(session && allowsDevAttestation(session.network, indexerUrl))} onChange={(event) => setDevMode(event.target.checked)} /> dev mode: accept an indexer without a TEE (local devnet only)</label>
+          </section>
+
+          <section className="panel">
+            <div className="panel-head"><h2>Drop recovery</h2></div>
+            <p className="note">A recovery file downloads before registration. Keep it and your original creator secret backup. Import it to retry key delivery or restore a drop after an indexer restart.</p>
+            <button disabled={!backup} onClick={() => { if (backup) triggerDownload(new Blob([backup], { type: 'application/json' }), 'blindfold-drop-recovery.json'); }}>Download latest recovery file</button>
+            <label>Restore an existing drop<input type="file" accept="application/json" disabled={!session || running} onChange={(event) => { const selected = event.target.files?.[0]; event.target.value = ''; if (selected) void recoverDrop(selected); }} /></label>
           </section>
 
           <section className="panel">
