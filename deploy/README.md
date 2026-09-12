@@ -157,12 +157,19 @@ Fill `.env` with the digest-pinned `IMAGE` and verified Preprod `CONTRACT_ADDRES
 
 ```bash
 docker compose config >/dev/null
-phala deploy -n blindfold-indexer -c docker-compose.yml -e .env -t tdx.small --kms phala --wait
-phala link
-phala ps
-phala logs
-phala cvms attestation --json > /tmp/blindfold-attestation.json
+# First deployment: run from the repository root. A `name`/`id` in deploy/cvm/phala.toml makes
+# the CLI look up an existing CVM and fail with "CVM not found" when there is none yet.
+cd ../..
+phala deploy -n blindfold-indexer -c deploy/cvm/docker-compose.yml -e deploy/cvm/.env \
+  -t tdx.small --kms phala --no-public-logs --wait
+# Later updates (new env, new digest): from deploy/cvm, where phala.toml carries the CVM id.
+cd deploy/cvm && phala deploy -c docker-compose.yml -e .env --wait
+phala ps --cvm-id <id>                          # container state; `phala logs` is off (public_logs=false)
+phala cvms attestation --cvm-id <id> --json > /tmp/blindfold-attestation.json
 ```
+
+Deployed 2026-09-12: CVM `ba917fac-0e75-45d5-8572-870b22c51cd7`, app id `94ef50c5…0429`, endpoint
+`https://94ef50c5719468f34cdb06e000e8f3ee415f0429-8080.dstack-pha-prod5.phala.network`, about $0.06/h.
 
 If the GHCR package is still private (the repository is private until submission), add registry
 credentials to the same ignored `.env` so dstack can pull the image; they travel as encrypted

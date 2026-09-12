@@ -69,14 +69,16 @@ DUST가 쌓이는 데 시간이 걸리므로 가장 먼저 시작한다.
 외부 의존이 가장 많은 구간이라 여기서 막히면 E와 F가 밀린다. 절차는 `deploy/README.md`의 "Build and publish the indexer image"와 "Phala CVM".
 
 - [x] 인덱서 이미지 빌드·GHCR push — 2026-09-12 · main `0bd5134` · Actions **release-image** [run 34671670491](https://github.com/moyedx3/blindfold/actions/runs/34671670491), `ghcr.io/moyedx3/blindfold-indexer@sha256:2b09efbe6f99e8eb89b1ee31da5416ff980c14432bf1ebbc56b830fa5ab4d4e3` (linux/amd64). 아직 attestation 검증 전이라 `networks.json`에는 넣지 않았다.
-- [ ] CVM이 이미지를 당길 수 있게: GitHub 패키지 설정에서 public으로 전환하거나, 레포가 public이 될 때까지는 `deploy/cvm/.env`에 `DSTACK_DOCKER_USERNAME`, `DSTACK_DOCKER_PASSWORD`(read:packages PAT), `DSTACK_DOCKER_REGISTRY=ghcr.io`를 넣어 encrypted env로 전달 ([Phala 문서](https://docs.phala.com/phala-cloud/cvm/create-with-private-docker-image)).
-- [ ] `npx phala login` (device flow, 브라우저 승인) 후 `npx phala status`로 확인. 크레딧 잔액 확인.
-- [ ] `deploy/cvm/.env` 작성(IMAGE는 digest 고정, CONTRACT_ADDRESS는 C의 값) → `phala deploy …` → 공개 HTTPS endpoint 확보.
-- [ ] `curl <endpoint>/attest`가 `"dev"`가 아닌 긴 quote를 주는지, `<endpoint>/contract`가 Preprod 주소를 주는지.
-- [ ] `npm run attest:inspect -- <endpoint>` 통과: TCB `UpToDate`, `report_data = sha256(provisioning_pubkey)`, RTMR3 출력.
-- [ ] RTMR3, endpoint, image digest를 `deploy/networks.json`에 기록 → `npm run smoke:live` 통과.
+- [x] GHCR 패키지 public 전환 — 2026-09-12 (익명 digest pull 200). 대안으로 남겨둔 방법: 레포가 private인 동안, 레포가 public이 될 때까지는 `deploy/cvm/.env`에 `DSTACK_DOCKER_USERNAME`, `DSTACK_DOCKER_PASSWORD`(read:packages PAT), `DSTACK_DOCKER_REGISTRY=ghcr.io`를 넣어 encrypted env로 전달 ([Phala 문서](https://docs.phala.com/phala-cloud/cvm/create-with-private-docker-image)).
+- [x] `npx phala login` — 2026-09-12, 프로필 `moyed-5e6feas-projects`.
+- [x] `phala deploy` — 2026-09-12 · CVM `ba917fac-0e75-45d5-8572-870b22c51cd7`, tdx.small(prod5, US-WEST-1, $0.06/h), endpoint `https://94ef50c5719468f34cdb06e000e8f3ee415f0429-8080.dstack-pha-prod5.phala.network`. CONTRACT_ADDRESS는 아직 64자리 0(자리표시자). 인덱서는 컨트랙트를 못 읽어도 뜨도록 고쳐서(main `0bd5134`) health/attest는 서비스 중. C가 끝나면 `.env`의 CONTRACT_ADDRESS만 바꾸고 `deploy/cvm`에서 `phala deploy`로 갱신.
+- [x] `/attest`가 진짜 quote(10,020 hex, TDX 1.5) 반환 — 2026-09-12. `/contract`는 아직 자리표시자 주소.
+- [x] `npm run attest:inspect -- <endpoint>` 통과 — 2026-09-12: `UpToDate`, report_data 바인딩 ok, RTMR3 `0b2236ad…8468` (Phala `cvms attestation`의 tcb_info와 일치).
+- [x] RTMR3, endpoint, image digest를 `deploy/networks.json`에 기록 — 2026-09-12. `contract_address`는 null 유지.
+- [ ] `npm run smoke:live` 통과 — C(Preprod 컨트랙트)가 끝나야 가능. 현재는 contract_address가 null이라 스크립트가 시작 단계에서 멈춘다.
 - [ ] CVM 재시작 후 RTMR3가 그대로인지, 이미지를 다시 빌드하면 바뀌는지 확인. 바뀌면 재핀 + 재-provision. **주의:** Phala 문서상 RTMR3에는 compose-hash뿐 아니라 app-id, instance-id, key-provider가 함께 들어간다. 즉 RTMR3 핀은 "이 CVM 인스턴스"를 고정하는 것이라 CVM을 새로 만들면 무조건 바뀐다. 데모용 단일 인스턴스에는 문제없지만 발표에서는 "인스턴스 핀"이라고 정확히 말한다.
-- [ ] **브라우저 검증기 실전 확인:** 크리에이터 앱을 `VITE_INDEXER_URL=<endpoint> VITE_EXPECTED_MEASUREMENT_HEX=<rtmr3>`로 띄워 실제 quote로 provision이 통과하는지. `creator/src/qvl-verifier.ts`는 아직 실제 quote를 본 적이 없다. 실패하면 이슈로 등록하고 `attest:inspect` 결과와 대조.
+- [x] 실제 quote를 크리에이터 검증기 코드로 통과 — 2026-09-12: 위 quote를 `creator/test/fixtures/phala-attest-2026-09-12.json`에 저장하고 `LIVE_QVL=1 npx vitest run test/live-quote.test.ts`(creator/)로 `verifyQuote` + `validateVerifiedQuote`가 UpToDate·RTMR3·키 바인딩을 통과. 브라우저 자체에서 돌리는 확인은 아래 항목.
+- [ ] **브라우저에서 실전 확인:** 크리에이터 앱을 `VITE_INDEXER_URL=<endpoint> VITE_EXPECTED_MEASUREMENT_HEX=<rtmr3>`로 띄워 실제 quote로 provision이 통과하는지. `creator/src/qvl-verifier.ts`는 아직 실제 quote를 본 적이 없다. 실패하면 이슈로 등록하고 `attest:inspect` 결과와 대조.
 - [ ] 공개 네트워크에 붙었을 때 dev mode 체크박스가 비활성인지.
 
 ### E. 공개 환경에서 A 반복 (C, D 다음) — 담당: ___

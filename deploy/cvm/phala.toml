@@ -1,3 +1,7 @@
+# CVM created 2026-09-12 (tdx.small, node prod5, US-WEST-1). With an id here, `phala deploy`
+# run from this directory UPDATES that CVM. For a brand-new CVM, remove the id (or run
+# from the repository root with explicit -c/-e paths) so the CLI does not look it up.
+id = "ba917fac-0e75-45d5-8572-870b22c51cd7"
 name = "blindfold-indexer"
 compose_file = "docker-compose.yml"
 env_file = ".env"
