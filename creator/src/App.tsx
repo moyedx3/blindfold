@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { explainWalletError, type WalletChoice } from "@blindfold/midnight-web/wallet";
+import { explainWalletError, unshieldedAddress, type WalletChoice } from "@blindfold/midnight-web/wallet";
 import { CONTENT_BLOB_OVERHEAD_BYTES, MAX_CONTENT_BLOB_BYTES, fetchAttestation, postProvision, uploadContentBlob } from "./api";
 import { fromHex, toHex, utf8Bytes } from "./bytes";
 import { allowsDevAttestation, exportRecovery, importRecovery, verifyRecoveryDrop } from "./recovery";
@@ -40,6 +40,7 @@ export function App() {
   const [message, setMessage] = useState("");
   const [backup, setBackup] = useState<string | null>(null);
   const [escrow, setEscrow] = useState<Array<{ index: bigint; dropId: bigint; valueStar: bigint }>>([]);
+  const [privateNight, setPrivateNight] = useState<bigint | null>(null);
   const inFlight = useRef(false);
   const running = Object.values(steps).some((state) => state === "running");
 
@@ -64,6 +65,25 @@ export function App() {
   useEffect(() => {
     void refreshEscrow();
   }, [refreshEscrow]);
+
+  const refreshPrivateBalance = useCallback(async () => {
+    if (!session) return;
+    setPrivateNight(await session.client.privateBalance());
+  }, [session]);
+  useEffect(() => { void refreshPrivateBalance(); }, [refreshPrivateBalance]);
+
+  async function cashOut(): Promise<void> {
+    if (!session || privateNight === null || privateNight === 0n) return;
+    setMessage("");
+    try {
+      const amount = privateNight;
+      const tx = await session.client.unwrap(amount, await unshieldedAddress(session.wallet));
+      await refreshPrivateBalance();
+      setMessage(`Cashed out ${formatNight(amount)} NIGHT to your public balance (tx ${tx.txId}).`);
+    } catch (error) {
+      setMessage(explainWalletError(error));
+    }
+  }
 
   async function provisioningKey(): Promise<Uint8Array> {
     if (!session) throw new Error('Connect a wallet first');
@@ -155,6 +175,7 @@ export function App() {
       const tx = await session.client.withdraw(index);
       setMessage(`Withdrew purchase ${index} (tx ${tx.txId}).`);
       await refreshEscrow();
+      await refreshPrivateBalance();
     } catch (error) {
       setMessage(explainWalletError(error));
     }
@@ -210,7 +231,7 @@ export function App() {
             </section>
           ) : null}
 
-          {session ? <p className="note">Connected to {session.network} · contract {session.contractAddress.slice(0, 10)}…</p> : null}
+          {session ? <p className="note">Connected to {session.network} · contract {session.contractAddress.slice(0, 10)}… · Private balance: {privateNight === null ? '…' : formatNight(privateNight)}</p> : null}
 
           <section className="panel">
             <div className="panel-head"><h2>Creator secret</h2></div>
@@ -259,6 +280,12 @@ export function App() {
             <div className="panel-head"><h2>Escrowed purchases (my drops)</h2><button onClick={() => void refreshEscrow()} disabled={!session}>Refresh</button></div>
             {!session ? <p className="note">Connect a wallet to inspect escrow.</p> : escrow.length === 0 ? <p className="note">Nothing to withdraw.</p> :
               <ul className="drops">{escrow.map((entry) => <li key={entry.index.toString()}><span>purchase {entry.index.toString()} · drop {entry.dropId.toString()} · {formatNight(entry.valueStar)} NIGHT</span><button onClick={() => void withdraw(entry.index)}>Withdraw</button></li>)}</ul>}
+          </section>
+
+          <section className="panel">
+            <div className="panel-head"><h2>Private balance</h2><button onClick={() => void refreshPrivateBalance()} disabled={!session}>Refresh</button></div>
+            <p className="note">Withdrawn purchases arrive here as bNIGHT, the shielded token this contract mints. Cash out sends the whole balance to your public NIGHT address.</p>
+            <button className="primary" disabled={!session || running || privateNight === null || privateNight === 0n} onClick={() => void cashOut()}>Cash out to public NIGHT</button>
           </section>
         </div>
       </div>
