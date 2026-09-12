@@ -2,7 +2,10 @@ import { CompiledContract } from '@midnight-ntwrk/compact-js';
 import { findDeployedContract } from '@midnight-ntwrk/midnight-js/contracts';
 import { getNetworkId, setNetworkId } from '@midnight-ntwrk/midnight-js/network-id';
 import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
+import { rawTokenType } from '@midnight-ntwrk/ledger-v8';
+import { MidnightBech32m, UnshieldedAddress } from '@midnight-ntwrk/wallet-sdk-address-format';
 import * as Blindfold from '@blindfold/contract/contract';
+import type { ConnectedWallet } from './wallet';
 
 export { getNetworkId, setNetworkId };
 
@@ -26,6 +29,10 @@ export interface BlindfoldClient {
   purchase(dropId: bigint, ePub: Uint8Array, price: bigint): Promise<TxRef>;
   createDrop(dropId: bigint, price: bigint, commit: Uint8Array): Promise<TxRef>;
   withdraw(idx: bigint): Promise<TxRef>;
+  wrap(amountStar: bigint): Promise<TxRef>;
+  unwrap(valueStar: bigint, toUnshieldedAddress: string): Promise<TxRef>;
+  privateBalance(): Promise<bigint>;
+  paymentTokenColor(): string;
   ledger(): Promise<LedgerView>;
 }
 
@@ -41,6 +48,24 @@ export function nightCoin(value: bigint) {
   return { nonce: crypto.getRandomValues(new Uint8Array(32)), color: new Uint8Array(32), value };
 }
 
+// Must equal the Compact side: pad(32, "blindfold:bNIGHT").
+export const PAYMENT_DOMAIN: Uint8Array = (() => { const out = new Uint8Array(32); out.set(new TextEncoder().encode('blindfold:bNIGHT')); return out; })();
+export const TOP_UP_DENOMINATIONS_STAR: readonly bigint[] = [5_000_000n, 10_000_000n, 50_000_000n];
+const hexToBytes = (h: string) => new Uint8Array((h.replace(/^0x/, '').match(/.{1,2}/g) ?? []).map((x) => parseInt(x, 16)));
+
+/** Hex color of the bNIGHT minted by the contract at `contractAddress` (ledger `tokenType(domainSep, contract)`). */
+export function paymentTokenColor(contractAddress: string): string {
+  return rawTokenType(PAYMENT_DOMAIN, contractAddress).replace(/^0x/, '').toLowerCase();
+}
+/** A fresh bNIGHT coin description for `purchase` / `unwrap`; the wallet funds it from the caller's bNIGHT. */
+export function paymentCoin(contractAddress: string, value: bigint) {
+  return { nonce: crypto.getRandomValues(new Uint8Array(32)), color: hexToBytes(paymentTokenColor(contractAddress)), value };
+}
+
+function userAddressBytes(networkId: string, bech32: string): Uint8Array {
+  return new Uint8Array(UnshieldedAddress.codec.decode(networkId, MidnightBech32m.parse(bech32)).data);
+}
+
 export async function readLedger(indexerUri: string, indexerWsUri: string, contractAddress: string, networkId: string): Promise<LedgerView> {
   applyNetworkId(networkId);
   const state = await indexerPublicDataProvider(indexerUri, indexerWsUri).queryContractState(contractAddress);
@@ -51,17 +76,28 @@ export async function readLedger(indexerUri: string, indexerWsUri: string, contr
 type PS = { secret: Uint8Array };
 const witnesses = { creatorSecret: (ctx: { privateState: PS }): [PS, Uint8Array] => [ctx.privateState, ctx.privateState.secret] };
 
-export async function connectContract(providers: any, contractAddress: string, secret: Uint8Array, privateStateId: string, networkId: string, zkAssetsPath = '/contract/blindfold'): Promise<BlindfoldClient> {
+export async function connectContract(providers: any, contractAddress: string, secret: Uint8Array, privateStateId: string, networkId: string, zkAssetsPath = '/contract/blindfold', wallet?: ConnectedWallet): Promise<BlindfoldClient> {
   applyNetworkId(networkId);
   const compiled = CompiledContract.make<any>('blindfold', Blindfold.Contract).pipe(
     CompiledContract.withWitnesses(witnesses), CompiledContract.withCompiledFileAssets(zkAssetsPath),
   );
   const found: any = await findDeployedContract(providers, { compiledContract: compiled, contractAddress, privateStateId, initialPrivateState: { secret } });
   const ref = (tx: any): TxRef => ({ txId: tx.public.txId, blockHeight: Number(tx.public.blockHeight) });
+  const color = paymentTokenColor(contractAddress);
   return {
-    purchase: async (dropId, ePub, price) => ref(await found.callTx.purchase(dropId, ePub, nightCoin(price))),
+    purchase: async (dropId, ePub, price) => ref(await found.callTx.purchase(dropId, ePub, paymentCoin(contractAddress, price))),
     createDrop: async (dropId, price, commit) => ref(await found.callTx.createDrop(dropId, price, commit)),
     withdraw: async (idx) => ref(await found.callTx.withdraw(idx)),
+    wrap: async (amountStar) => {
+      if (!TOP_UP_DENOMINATIONS_STAR.includes(amountStar)) throw new Error('top up 5, 10, or 50 NIGHT');
+      return ref(await found.callTx.wrap(amountStar));
+    },
+    unwrap: async (valueStar, to) => ref(await found.callTx.unwrap(paymentCoin(contractAddress, valueStar), { bytes: userAddressBytes(networkId, to) })),
+    privateBalance: async () => {
+      if (!wallet) throw new Error('privateBalance needs the connected wallet');
+      return (await wallet.api.getShieldedBalances())[color] ?? 0n;
+    },
+    paymentTokenColor: () => color,
     ledger: async () => {
       const s = await providers.publicDataProvider.queryContractState(contractAddress);
       if (!s) throw new Error(`no contract at ${contractAddress}`);

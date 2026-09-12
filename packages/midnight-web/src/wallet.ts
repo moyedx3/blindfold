@@ -39,11 +39,15 @@ export async function balances(w: ConnectedWallet) {
   return { shieldedNight: sh[NATIVE_RAW] ?? 0n, unshieldedNight: un[NATIVE_RAW] ?? 0n, dust: dust.balance, dustCap: dust.cap };
 }
 
+export async function unshieldedAddress(w: ConnectedWallet): Promise<string> {
+  return (await w.api.getUnshieldedAddress()).unshieldedAddress;
+}
+
 export function explainWalletError(e: unknown): string {
   const m = e instanceof Error ? e.message : String(e);
   if (/6300|proof server|ECONNREFUSED/i.test(m)) return `Proof server unreachable. Lace needs the local proof server on port 6300 (docker run -p 6300:6300 midnightntwrk/proof-server:8.1.0). (${m})`;
   if (/dust/i.test(m)) return `Not enough DUST to pay the fee. Register NIGHT for DUST generation in the wallet and wait a few minutes. (${m})`;
-  if (/insufficient/i.test(m)) return `Insufficient funds: you need shielded NIGHT for the price plus DUST for the fee. (${m})`;
+  if (/insufficient/i.test(m)) return `Not enough private balance. Top up 5, 10, or 50 NIGHT and keep some DUST for the fee. (${m})`;
   if (/reject|denied|cancel/i.test(m)) return `The wallet rejected the request. (${m})`;
   return m;
 }

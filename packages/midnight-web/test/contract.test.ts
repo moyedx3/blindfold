@@ -39,7 +39,7 @@ describe('nightCoin', () => {
 
 describe('FakeBlindfoldClient', () => {
   it('records purchases into its ledger view', async () => {
-    const c = new FakeBlindfoldClient({ drops: new Map([[1n, 5n]]) });
+    const c = new FakeBlindfoldClient({ drops: new Map([[1n, 5n]]) }, undefined, { privateBalance: 5n });
     const ePub = new Uint8Array(32).fill(1);
     const tx = await c.purchase(1n, ePub, 5n);
     expect(tx.txId).toMatch(/^fake-/);
@@ -59,5 +59,32 @@ describe('FakeBlindfoldClient', () => {
     v.drops.set(99n, 1n);
     const v2 = await c.ledger();
     expect(v2.drops.has(99n)).toBe(false);
+  });
+});
+
+import { paymentTokenColor, paymentCoin, TOP_UP_DENOMINATIONS_STAR, PAYMENT_DOMAIN } from '../src/contract';
+
+describe('bNIGHT helpers', () => {
+  const a = 'ab'.repeat(32);
+  const b = 'cd'.repeat(32);
+  it('domain separator is blindfold:bNIGHT zero-padded to 32 bytes', () => {
+    expect(PAYMENT_DOMAIN.length).toBe(32);
+    expect(new TextDecoder().decode(PAYMENT_DOMAIN.subarray(0, 16))).toBe('blindfold:bNIGHT');
+    expect([...PAYMENT_DOMAIN.subarray(16)].every((x) => x === 0)).toBe(true);
+  });
+  it('color is 64 hex, deterministic, and bound to the contract address', () => {
+    expect(paymentTokenColor(a)).toMatch(/^[0-9a-f]{64}$/);
+    expect(paymentTokenColor(a)).toBe(paymentTokenColor(a));
+    expect(paymentTokenColor(a)).not.toBe(paymentTokenColor(b));
+    expect(paymentTokenColor(a)).not.toBe('0'.repeat(64));
+  });
+  it('paymentCoin carries that color and a fresh nonce', () => {
+    const c1 = paymentCoin(a, 5n); const c2 = paymentCoin(a, 5n);
+    expect(Buffer.from(c1.color).toString('hex')).toBe(paymentTokenColor(a));
+    expect(Buffer.from(c1.nonce).equals(Buffer.from(c2.nonce))).toBe(false);
+    expect(c1.value).toBe(5n);
+  });
+  it('denominations are 5, 10, 50 NIGHT', () => {
+    expect(TOP_UP_DENOMINATIONS_STAR).toEqual([5_000_000n, 10_000_000n, 50_000_000n]);
   });
 });
