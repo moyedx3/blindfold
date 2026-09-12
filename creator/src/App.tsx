@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { explainWalletError, type WalletChoice } from "@blindfold/midnight-web/wallet";
-import { fetchAttestation, postProvision, uploadContentBlob } from "./api";
+import { CONTENT_BLOB_OVERHEAD_BYTES, MAX_CONTENT_BLOB_BYTES, fetchAttestation, postProvision, uploadContentBlob } from "./api";
 import { fromHex, toHex, utf8Bytes } from "./bytes";
 import { allowsDevAttestation, exportRecovery, importRecovery, verifyRecoveryDrop } from "./recovery";
 import { verifyAttestationOrThrow } from "./attestation";
@@ -9,7 +9,7 @@ import { encryptContent } from "./content";
 import { listDrops, rememberDrop } from "./drops";
 import { priceNightToStar } from "./price";
 import { buildProvisionPayload, sealProvisionPayload } from "./provision";
-import { exportSecretFile, importSecretFile, loadOrCreateSecret } from "./secret";
+import { CreatorSecretConflictError, exportSecretFile, importSecretFile, loadOrCreateSecret } from "./secret";
 import { availableWallets, openSession, type Session } from "./session";
 import "./styles.css";
 
@@ -72,7 +72,7 @@ export function App() {
       if (!devMode || !allowsDevAttestation(session.network, indexerUrl)) throw new Error('Dev attestation is allowed only on the local undeployed network');
       return fromHex(attestation.provisioning_pubkey_hex);
     }
-    return verifyAttestationOrThrow(attestation, expectedMeasurement);
+    return verifyAttestationOrThrow(attestation, expectedMeasurement.trim());
   }
 
   async function recoverDrop(selected: File): Promise<void> {
@@ -108,6 +108,12 @@ export function App() {
       const id = Number(dropId);
       if (!Number.isSafeInteger(id) || id < 0) throw new Error("validation: drop id must be a non-negative integer");
       const priceStar = priceNightToStar(priceNight);
+      // Check the size before reading, encrypting, and building the recovery file;
+      // the indexer would reject the blob anyway, after all that memory was spent.
+      const sourceBytes = file ? file.size : utf8Bytes(textContent).length;
+      if (sourceBytes + CONTENT_BLOB_OVERHEAD_BYTES > MAX_CONTENT_BLOB_BYTES) {
+        throw new Error("validation: content must be at most 50 MiB");
+      }
 
       setSteps({ ...idleSteps, encrypt: "running" });
       const plaintext = file ? new Uint8Array(await file.arrayBuffer()) : utf8Bytes(textContent);
@@ -155,13 +161,30 @@ export function App() {
   }
 
   const exportSecret = useCallback(() => {
-    const blob = new Blob([exportSecretFile(loadOrCreateSecret())], { type: "application/json" });
-    triggerDownload(blob, "blindfold-creator-secret.json");
+    try {
+      const blob = new Blob([exportSecretFile(loadOrCreateSecret())], { type: "application/json" });
+      triggerDownload(blob, "blindfold-creator-secret.json");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : String(error));
+    }
   }, []);
 
   const importSecret = useCallback(async (secretFile: File) => {
     try {
-      importSecretFile(await secretFile.text());
+      const json = await secretFile.text();
+      try {
+        importSecretFile(json);
+      } catch (error) {
+        if (!(error instanceof CreatorSecretConflictError)) throw error;
+        const confirmed = window.confirm(
+          "This browser already holds a different creator secret. Replacing it removes withdraw access for drops registered with the current secret unless you exported it. Replace it?",
+        );
+        if (!confirmed) {
+          setMessage("Import cancelled. The stored creator secret is unchanged.");
+          return;
+        }
+        importSecretFile(json, undefined, { replace: true });
+      }
       setMessage("Creator secret imported. Reconnect the wallet.");
       setSession(null);
     } catch (error) {
@@ -182,7 +205,7 @@ export function App() {
           {!session ? (
             <section className="panel">
               <div className="panel-head"><h2>Connect a Midnight wallet</h2><button onClick={() => window.location.reload()}>Rescan wallets</button></div>
-              {wallets.length === 0 ? <p className="note">No Midnight wallet found. Install Lace or 1AM and reload.</p> :
+              {wallets.length === 0 ? <p className="note">No Midnight wallet found. Install Lace and reload.</p> :
                 <ul className="drops">{wallets.map((wallet) => <li key={wallet.key}><strong>{wallet.name}</strong><button className="primary" onClick={() => void connect(wallet)}>Connect</button></li>)}</ul>}
             </section>
           ) : null}

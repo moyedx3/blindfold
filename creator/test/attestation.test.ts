@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { sha256, toHex } from "../src/bytes";
 import { validateVerifiedQuote } from "../src/attestation";
 
@@ -6,11 +6,6 @@ const measurement = "ab".repeat(48);
 const attestation = { quote_hex: "11", provisioning_pubkey_hex: "cd".repeat(32) };
 
 describe("attestation policy", () => {
-  beforeEach(() => {
-    // Keep the test independent from the browser-only custom verifier hook.
-    delete window.blindfoldQuoteVerifier;
-  });
-
   it("requires UpToDate, the pinned RTMR3, and the key binding", async () => {
     const pubkey = new Uint8Array(32).fill(0xcd);
     const digest = await sha256(pubkey);

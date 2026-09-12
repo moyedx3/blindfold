@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { exportSecretFile, importSecretFile, loadOrCreateSecret } from "../src/secret";
+import { CREATOR_SECRET_STORAGE_KEY, CreatorSecretConflictError, exportSecretFile, importSecretFile, loadOrCreateSecret } from "../src/secret";
 
 function installStorageShim(): void {
   const map = new Map<string, string>();
@@ -38,5 +38,25 @@ describe("creator secret", () => {
 
   it("rejects a foreign file", () => {
     expect(() => importSecretFile('{"v":"x"}')).toThrow(/not a blindfold/);
+  });
+
+  it("refuses to replace a different stored secret unless told to", () => {
+    const current = loadOrCreateSecret();
+    const other = exportSecretFile(new Uint8Array(32).fill(7));
+    expect(() => importSecretFile(other)).toThrow(CreatorSecretConflictError);
+    expect(Buffer.from(loadOrCreateSecret()).equals(Buffer.from(current))).toBe(true);
+    const replaced = importSecretFile(other, undefined, { replace: true });
+    expect(Buffer.from(replaced).equals(Buffer.from(new Uint8Array(32).fill(7)))).toBe(true);
+  });
+
+  it("re-importing the currently stored secret is not a conflict", () => {
+    const current = loadOrCreateSecret();
+    expect(() => importSecretFile(exportSecretFile(current))).not.toThrow();
+  });
+
+  it("does not regenerate over a corrupted stored value", () => {
+    localStorage.setItem(CREATOR_SECRET_STORAGE_KEY, "not-hex");
+    expect(() => loadOrCreateSecret()).toThrow(/corrupted/);
+    expect(localStorage.getItem(CREATOR_SECRET_STORAGE_KEY)).toBe("not-hex");
   });
 });

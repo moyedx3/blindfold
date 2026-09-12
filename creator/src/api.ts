@@ -103,9 +103,13 @@ export function fetchCatalog(indexerUrl: string): Promise<CatalogEntry[]> {
   return fetchParsedJson("catalog", joinUrl(indexerUrl, "/catalog"), z.array(CatalogEntrySchema));
 }
 
+// Matches the indexer's bucket limit. The blob is nonce(12) || ciphertext || tag(16).
+export const MAX_CONTENT_BLOB_BYTES = 50 * 1024 * 1024;
+export const CONTENT_BLOB_OVERHEAD_BYTES = 12 + 16;
+
 export async function uploadContentBlob(indexerUrl: string, hContent: string, blob: Uint8Array): Promise<void> {
   if (!SHA256_HEX_PATTERN.test(hContent)) throw new Error("h_content must be a SHA-256 hex value");
-  if (blob.length > 50 * 1024 * 1024) throw new Error("content blob must be at most 50 MiB");
+  if (blob.length > MAX_CONTENT_BLOB_BYTES) throw new Error("content blob must be at most 50 MiB");
   await request("bucket", joinUrl(indexerUrl, `/bucket/${hContent.toLowerCase()}`), {
     method: "PUT",
     headers: { "content-type": "application/octet-stream" },
