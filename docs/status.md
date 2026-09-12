@@ -37,35 +37,21 @@
 
 각 블록에 담당자를 적고, 끝나면 체크와 함께 증거를 남긴다. 마감은 제출 2026-09-28 00:00 KST 기준 역산.
 
-### A. 로컬 devnet에서 실제 지갑 두 개로 처음부터 끝까지 (이번 주. 외부 자원 불필요) — 담당: ___
+### A. 로컬 devnet에서 실제 지갑 두 개로 처음부터 끝까지 — 대체됨
 
-지금까지 크리에이터 앱은 fake wallet으로만, 구매자 앱은 CLI로 등록한 drop만 실제 Lace로 샀다. 두 앱을 실제 지갑으로 이어서 돌린 적이 없다.
+Preprod에서 실제 지갑(1AM)으로 한 바퀴를 끝냈으므로(E-2, 2026-09-13) 이 블록은 더 이상 필요 없다. 로컬 devnet은 개발·테스트용(`npm run demo:local`, contract flow 테스트, 인덱서 e2e)으로만 쓴다. 아직 브라우저에서 안 해본 두 가지는 §G 선택 사항으로 옮겼다.
 
-- [ ] Lace 프로필 두 개(크리에이터, 구매자), 둘 다 네트워크 **Undeployed**, proof server **Local (http://localhost:6300)**.
-- [ ] `npm run demo:local`로 스택을 올리고, 두 지갑의 주소를 genesis 지갑에서 fund: `npm run fund -w contract -- <mn_addr…> <mn_shield-addr…> 1000 --network undeployed` (Preprod 지갑을 준비한 뒤로는 상태 파일의 기본 네트워크가 preprod라 `--network`를 꼭 붙인다)
-- [ ] 크리에이터 앱 `VITE_INDEXER_URL=http://127.0.0.1:8080 npm run dev -w creator` (5175): dev mode 체크 → 파일 선택 → Encrypt + Register + Provision. 복구 파일이 내려받아지는지, 카탈로그(`/catalog`)에 뜨는지.
-- [ ] 구매자 앱 `VITE_INDEXER_URL=http://127.0.0.1:8080 npm run dev -w buyer` (5173): **Top up 5/10/50**(고정
-      단위)로 Private balance를 채우고 → 구매(Private balance 차감, 새 top-up 없이 한 번 승인) → 언락 →
-      복호화된 파일이 원본과 같은지.
-- [ ] 크리에이터 앱에서 Escrowed purchases → Withdraw 성공 → Private balance 패널에서 **Cash out to public
-      NIGHT** → 공개 NIGHT 잔액이 늘어나는지.
-- [ ] `npm run demo:stop` 후 인덱서만 다시 띄우고, 크리에이터 앱 "Restore an existing drop"에 복구 파일을 넣어 등록 tx 없이 재-provision 되는지.
-- [ ] 크리에이터 secret export → 브라우저 저장소 비움 → import → 같은 drop의 withdraw가 되는지. 다른 secret import 시 확인창이 뜨는지.
-- [ ] 결과를 `docs/deployment-verification-<날짜>.md`로 기록.
+### B. 공개 테스트넷 지갑 준비 — 완료
 
-### B. 공개 테스트넷 지갑 준비 (권장 9/15 시작, 늦어도 9/24) — 담당: ___
-
-DUST가 쌓이는 데 시간이 걸리므로 가장 먼저 시작한다.
-
-- [ ] 배포 지갑: `npm run wallet:prepare -w contract -- --network preprod` → 복구 구문을 레포 밖에 백업 → 출력된 주소를 faucet(<https://midnight-tmnight-preprod.nethermind.dev/>)에서 fund → Lace(Preprod)로 import → NIGHT를 DUST 생성에 등록 → DUST 양수 확인.
-- [ ] 크리에이터용, 구매자용 Lace Preprod 지갑도 각각 fund + shield + DUST.
-- [ ] 세 지갑 잔액을 데모 전날 다시 확인.
+- [x] 배포 지갑 준비·fund·DUST 등록 — 2026-09-12 (복구 구문은 레포 밖에 보관, 상태는 `contract/.midnight-wallet-state/preprod`에 캐시).
+- [x] 크리에이터용·구매자용 Preprod 지갑 — 2026-09-13, Lace 대신 **1AM** (Lace는 Preprod sync가 끝나지 않음). faucet은 unshielded `mn_addr_preprod…` 주소로만 준다. 구매·withdraw는 shielded 지출이라 1AM이 DUST를 대납하지 않으니 두 지갑 모두 DUST가 있어야 한다.
+- [ ] 세 지갑 잔액(구매자 NIGHT+DUST, 크리에이터 DUST, 배포 지갑 NIGHT)을 데모 전날·심사 시작 전에 다시 확인.
 
 ### C. Preprod 컨트랙트 배포 (B 다음) — 담당: ___
 
 - [x] `npm run deploy -w contract -- --network preprod` — 2026-09-12 · 컨트랙트 `34e1bdbdb2602d457559d6229730d5486da870216da9478e322bbefea4785d18`. 배포 지갑 첫 sync에 약 55분(251만 블록), DUST 등록·대기는 스크립트가 처리.
 - [x] `npm run ledger -w contract -- <주소> --network preprod` — drops 없음, purchaseCount 0 (빈 초기 상태 확인).
-- [ ] <https://preprod.midnightexplorer.com/> 에서 컨트랙트 주소 조회해 보이는지 확인 (브라우저에서).
+- [ ] <https://preprod.midnightexplorer.com/> 에서 현재 컨트랙트 `84d80ed0…`(`deploy/networks.json`)를 조회해 보이는지 확인 (브라우저에서).
 - [x] `deploy/networks.json`의 `preprod.contract_address` 기록 — 2026-09-12.
 
 ### D. Phala CVM 배포와 실제 TDX 검증 (C와 병렬 시작 가능. Phala 계정·크레딧, GHCR 필요) — 담당: ___
@@ -125,6 +111,8 @@ Preprod와 메인넷에는 shielded NIGHT가 없다(`docs/superpowers/specs/2026
 ### G. 하면 좋은 것 (필수 아님)
 
 - [x] 실제 TDX quote 하나를 fixture로 저장해 `creator/test`에서 `verifyQuote` 실전 경로를 회귀 테스트.
+- [ ] 크리에이터 앱 "Restore existing content"에 복구 파일을 넣어 등록 tx 없이 재-provision 되는지 브라우저에서 확인 (CLI `npm run demo:recover`는 검증됨).
+- [ ] 크리에이터 secret export → 브라우저 저장소 비움 → import → 같은 콘텐츠의 withdraw가 되는지. 다른 secret import 시 확인창이 뜨는지.
 - [ ] `deploy/scripts/smoke-live.ts`가 preprod만 받는다. Preview로 갈 경우 스키마 수정.
 - [x] 1AM 지갑으로 구매 한 번. 성공하면 README에서 "Lace만 검증" 문구를 갱신.
 
