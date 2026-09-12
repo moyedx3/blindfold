@@ -30,8 +30,8 @@ local devnet, where the dev genesis seeds shielded native coins. It cannot work 
   (`tokenType(pad(32,"blindfold:bNIGHT"), kernel.self())`), not `nativeToken()`. Two new circuits:
   `wrap(amount)` accepts exactly 5, 10, or 50 NIGHT (5000000 / 10000000 / 50000000 STAR) of public NIGHT and
   mints the same amount of bNIGHT to the caller; `unwrap(coin, to)` takes a bNIGHT coin the contract holds
-  and sends the same amount of public NIGHT to `to`. A new `wrapCount: Counter` ledger field is the mint
-  nonce source.
+  and sends the same amount of public NIGHT to `to`. A `wrapNonce: Bytes<32>` ledger field evolves on every
+  mint (each mint rehashes it with the previous value) and is the mint nonce source.
 - `contract/scripts/lib/providers.ts` (Task 1): `paymentColorHex` / `paymentColor` / `paymentCoin` compute
   the deployment-specific bNIGHT color; `TOP_UP_DENOMINATIONS_STAR` lists the three allowed top-up amounts.
 - `packages/midnight-web` (Task 2): wrap/unwrap/`privateBalance` client calls and the bNIGHT color.

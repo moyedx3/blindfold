@@ -15,7 +15,7 @@ Midnight Korea Hackathon 2026 제출용이며, 마감은 **2026-09-28 00:00 KST*
 2026-09-05에 로컬 devnet에서 핵심 스파이크를 통과했다: 컨트랙트가 가격을 강제하고 구매자의 일회용 키를
 원자적으로 기록하며, Lace 지갑에서 shielded NIGHT로 결제가 되고, 크리에이터가 에스크로된 코인을 회수한다.
 **현황 (2026-09-12):** Lane A~D가 모두 main에 머지됐다. 크리에이터 앱(`creator/`), 배포 런북과 원클릭 로컬
-데모(`deploy/`), CI, 크리에이터 복구 파일까지 포함이며, 133개 단위 테스트, 두 앱의 브라우저 smoke, 실제 체인 contract
+데모(`deploy/`), CI, 크리에이터 복구 파일까지 포함이며, 142개 단위 테스트, 두 앱의 브라우저 smoke, 실제 체인 contract
 flow, 인덱서 E2E, 재시작 후 재-provision을 2026-09-12에 로컬 devnet에서 다시 확인했다. 남은 것은 전부 **외부 릴리스
 단계**다: Preprod 컨트랙트 배포, Phala CVM 배포와 실제 TDX quote 검증(RTMR3 핀), 실제 Lace 지갑으로 Creator → Buyer →
 withdraw 전체 흐름, 데모 영상. 무엇을 이어서 할지는 바로 아래 섹션 0을 보라.
@@ -31,10 +31,10 @@ against public infrastructure, listed under Open.
 
 | Lane | What landed | Proof it works |
 |---|---|---|
-| **A** `contract/` + `indexer/` | Compact contract (`createDrop` / `purchase` / `withdraw`, content-bound key commitment), deploy/fund/ledger scripts, the TEE indexer (attestation, provisioning checked against the chain, ledger watcher, dispatch, HTTP surface, Dockerfile). | 1 compile check, 62 indexer unit tests, a 6-case contract flow test on the devnet, an end-to-end devnet test (purchase → sealed blob opens to the key), a test against Phala's dstack simulator. |
-| **B** `packages/midnight-web/` + `buyer/` | Shared wallet package (DApp-connector discovery, official Lace adapter as midnight-js providers, `BlindfoldClient` over the compiled contract, fakes for tests) and the buyer app (connect → catalog → buy in one shielded tx → poll → trial-open → decrypt, recovery file, manual unlock, 24 h local persistence). | 14 + 25 unit tests, a Playwright smoke through a fake connector and mock indexer, and a real Lace purchase on the local devnet that unlocked in about 20 s. |
+| **A** `contract/` + `indexer/` | Compact contract (`createDrop` / `purchase` / `withdraw`, content-bound key commitment), deploy/fund/ledger scripts, the TEE indexer (attestation, provisioning checked against the chain, ledger watcher, dispatch, HTTP surface, Dockerfile). | 1 compile check, 62 indexer unit tests, an 11-case contract flow test on the devnet, an end-to-end devnet test (purchase → sealed blob opens to the key), a test against Phala's dstack simulator. |
+| **B** `packages/midnight-web/` + `buyer/` | Shared wallet package (DApp-connector discovery, official Lace adapter as midnight-js providers, `BlindfoldClient` over the compiled contract, fakes for tests) and the buyer app (connect → catalog → buy in one shielded tx → poll → trial-open → decrypt, recovery file, manual unlock, 24 h local persistence). | 21 + 27 unit tests, a Playwright smoke through a fake connector and mock indexer, and a real Lace purchase on the local devnet that unlocked in about 20 s. |
 | **C** `creator/` | Creator web app: browser-side encryption, ciphertext upload, on-chain registration with the key commitment, attestation gate (`@phala/dcap-qvl`, RTMR3 pin, `report_data` binding), sealed provisioning, creator-secret export/import, encrypted drop recovery file and re-provision, escrow listing and withdraw. | 31 unit tests and a Playwright smoke through the fake connector (including re-provision after the enclave key changes). The real Lace creator flow has not been run yet. |
-| **D** `deploy/` + CI + docs | `deploy/devnet` compose, one-shot `npm run demo:local` (compile, devnet, deploy, indexer, seed, recovery bundle), `demo:recover`, Preprod and Phala CVM runbooks, `attest:inspect` / `smoke:live` quote verification in Node, `qa:secrets` lint, GitHub Actions CI, submission README, demo script and readiness notes. | `demo:local`, restart + `demo:recover`, the 6-case contract devnet flow, the indexer devnet E2E, both browser smokes, and CI green; all re-run on 2026-09-12. |
+| **D** `deploy/` + CI + docs | `deploy/devnet` compose, one-shot `npm run demo:local` (compile, devnet, deploy, indexer, seed, recovery bundle), `demo:recover`, Preprod and Phala CVM runbooks, `attest:inspect` / `smoke:live` quote verification in Node, `qa:secrets` lint, GitHub Actions CI, submission README, demo script and readiness notes. | `demo:local`, restart + `demo:recover`, the 11-case contract devnet flow, the indexer devnet E2E, both browser smokes, and CI green; all re-run on 2026-09-12. |
 
 Run all of it with section 7b. `npm test` at the root runs every workspace's unit tests.
 
@@ -281,7 +281,7 @@ npm run compile -w contract                          # Compact 0.31.1 -> contrac
 npm test -w indexer                                  # 62 unit tests (devnet/simulator cases skip)
 docker compose -f deploy/devnet/docker-compose.yml up -d --wait
 npm run deploy -w contract -- --network undeployed    # prints CONTRACT_ADDRESS=...
-DEVNET=1 npm run test:devnet -w contract              # 6-case contract flow test (~90 s)
+DEVNET=1 npm run test:devnet -w contract              # 11-case contract flow test (~90 s)
 cd indexer && NETWORK=undeployed CONTRACT_ADDRESS=<addr> DEV_SEED_HEX=<64 hex> DATA_DIR=../.local/manual-indexer npm start
 DEVNET=1 CONTRACT_ADDRESS=<addr> npx vitest run test/e2e.devnet.test.ts
 cd ..

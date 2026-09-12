@@ -22,8 +22,8 @@ at commit `f060804e8b06024dfbbe14708a38de1b873efdc7`. This run used headless wal
 transactions and dev attestation; the real Lace purchase below is earlier evidence, not a new browser
 wallet test performed during this run. Public testnet and mainnet readiness remain unverified.
 
-- Compact enforces the price, escrows shielded NIGHT, records the buyer's one-time key, and permits only
-  the authorized creator to withdraw.
+- Compact enforces the price, escrows bNIGHT (the contract-minted shielded token), records the buyer's
+  one-time key, and permits only the authorized creator to withdraw.
 - A real Lace purchase completed on the local Midnight devnet without exposing wallet keys in the public
   contract arguments.
 - The indexer validates provisioning against contract price, key commitment, and uploaded ciphertext.

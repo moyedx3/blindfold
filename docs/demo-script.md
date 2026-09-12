@@ -5,9 +5,11 @@ evidence before recording. Use separate creator and buyer browser profiles.
 
 ## 0:00–0:15 — problem and proof status
 
-“Blindfold sells encrypted content for a private payment. The contract enforces payment, Midnight shields
-the buyer, and an attested TEE hands over a key it cannot expose to its operator.” Briefly show the green
-CI/live-smoke result and the pinned contract, endpoint, image digest, and RTMR3.
+“Blindfold sells encrypted content for a private payment. The buyer moves public NIGHT into a private
+balance in fixed denominations; the purchase spends that private balance, so the chain sees a drop id and
+a one-time key, not a wallet. The content key is delivered by an attested TEE that cannot expose it to its
+operator.” Briefly show the green CI/live-smoke result and the pinned contract, endpoint, image digest, and
+RTMR3.
 
 ## 0:15–0:35 — buyer top-up
 

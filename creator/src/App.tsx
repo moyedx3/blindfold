@@ -41,6 +41,7 @@ export function App() {
   const [backup, setBackup] = useState<string | null>(null);
   const [escrow, setEscrow] = useState<Array<{ index: bigint; dropId: bigint; valueStar: bigint }>>([]);
   const [privateNight, setPrivateNight] = useState<bigint | null>(null);
+  const [cashingOut, setCashingOut] = useState(false);
   const inFlight = useRef(false);
   const running = Object.values(steps).some((state) => state === "running");
 
@@ -68,12 +69,17 @@ export function App() {
 
   const refreshPrivateBalance = useCallback(async () => {
     if (!session) return;
-    setPrivateNight(await session.client.privateBalance());
+    try {
+      setPrivateNight(await session.client.privateBalance());
+    } catch (error) {
+      setMessage(explainWalletError(error));
+    }
   }, [session]);
   useEffect(() => { void refreshPrivateBalance(); }, [refreshPrivateBalance]);
 
   async function cashOut(): Promise<void> {
-    if (!session || privateNight === null || privateNight === 0n) return;
+    if (!session || privateNight === null || privateNight === 0n || cashingOut) return;
+    setCashingOut(true);
     setMessage("");
     try {
       const amount = privateNight;
@@ -82,6 +88,8 @@ export function App() {
       setMessage(`Cashed out ${formatNight(amount)} NIGHT to your public balance (tx ${tx.txId}).`);
     } catch (error) {
       setMessage(explainWalletError(error));
+    } finally {
+      setCashingOut(false);
     }
   }
 
@@ -285,7 +293,7 @@ export function App() {
           <section className="panel">
             <div className="panel-head"><h2>Private balance</h2><button onClick={() => void refreshPrivateBalance()} disabled={!session}>Refresh</button></div>
             <p className="note">Withdrawn purchases arrive here as bNIGHT, the shielded token this contract mints. Cash out sends the whole balance to your public NIGHT address.</p>
-            <button className="primary" disabled={!session || running || privateNight === null || privateNight === 0n} onClick={() => void cashOut()}>Cash out to public NIGHT</button>
+            <button className="primary" disabled={!session || running || cashingOut || privateNight === null || privateNight === 0n} onClick={() => void cashOut()}>{cashingOut ? 'proving…' : 'Cash out to public NIGHT'}</button>
           </section>
         </div>
       </div>

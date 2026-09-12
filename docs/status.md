@@ -15,15 +15,15 @@
 
 | 영역 | 구현 | 검증됨 (어떻게, 언제) | 미검증 / 한계 |
 |---|---|---|---|
-| Compact 컨트랙트 `contract/` | 완료 | 로컬 devnet 6케이스 flow 테스트: 등록, 중복 거부, 구매·에스크로, 부족 결제 거부, 타인 출금 거부, 크리에이터 출금. 2026-09-12 재확인 | Preprod에 배포한 적 없음 |
+| Compact 컨트랙트 `contract/` | 완료 | 로컬 devnet 11케이스 flow 테스트: 등록, 중복 거부, wrap 금액 검증 거부, wrap 발행, 구매 시 네이티브 코인 거부, 구매·에스크로, 부족 결제 거부, 타인 출금 거부, 크리에이터 출금, unwrap 색상 검증 거부, unwrap 환급. 2026-09-12 재확인 | Preprod에 배포한 적 없음 |
 | TEE 인덱서 `indexer/` | 완료 | 단위 62개, devnet E2E(구매 → 봉인된 키 전달), dstack 시뮬레이터 연동 테스트, Docker 이미지 빌드 | **실제 Phala CVM/TDX에서 실행한 적 없음.** 지금까지 모든 실행은 `quote_hex: "dev"` |
-| 공용 지갑 패키지 `packages/midnight-web/` + 구매자 앱 `buyer/` | 완료 | 단위 14 + 25, fake-wallet Playwright smoke, **실제 Lace로 구매·언락 (2026-09-05, 로컬 devnet, 약 20초)** | 1AM 지갑은 테스트 안 함 |
+| 공용 지갑 패키지 `packages/midnight-web/` + 구매자 앱 `buyer/` | 완료 | 단위 21 + 27, fake-wallet Playwright smoke, **실제 Lace로 구매·언락 (2026-09-05, 로컬 devnet, 약 20초)** | 1AM 지갑은 테스트 안 함 |
 | 크리에이터 앱 `creator/` | 완료 | 단위 31, fake-wallet smoke(enclave 키 교체 후 재-provision 포함), attestation 검증기 단위 fixture(TDX 1.0/1.5 report) | **실제 Lace로 돌려본 적 없음.** 실제 TDX quote로 검증기를 돌려본 적 없음 |
 | 배포 도구 `deploy/` | 완료 | `npm run demo:local`(컴파일 → devnet → 배포 → 인덱서 → drop 등록·provision), 인덱서 재시작 후 `npm run demo:recover`, 8080 점유 시 즉시 실패. 2026-09-12 확인 | Preprod·Phala 런북은 **한 번도 실행 안 됨**. `deploy/networks.json`은 전부 `null` |
 | CI `.github/workflows/ci.yml` | 완료 | main에서 초록: 컴파일, 단위 전체, 빌드 4개, deploy 타입체크, `qa:secrets`, compose config, buyer/creator smoke ([run 34670704713](https://github.com/moyedx3/blindfold/actions/runs/34670704713)) | devnet 테스트는 CI에서 skip (로컬에서만) |
 | 문서 | 완료 | README, guide, demo-script, demo-readiness, 검증 기록 | 데모 영상 없음. 저장소 아직 private |
 
-단위 테스트 합계 133개 (contract 1, indexer 62, midnight-web 14, buyer 25, creator 31).
+단위 테스트 합계 142개 (contract 1, indexer 62, midnight-web 21, buyer 27, creator 31).
 
 ## 2. 검증의 근거
 
@@ -31,7 +31,7 @@
 - 2026-09-10/11: 로컬 devnet 배포·재시작 복구 기록 [`deployment-verification-2026-09-11.md`](deployment-verification-2026-09-11.md).
 - 2026-09-12: Lane C/D + 복구 기능 전체 리뷰 후 main 머지. 리뷰에서 나온 attestation 우회 훅 제거, TDX 1.5 report 지원,
   creator secret 덮어쓰기 방지, `public_logs=false`, devnet 재기동 후 지갑 sync 멈춤 수정이 함께 들어갔다.
-  133 단위, 두 smoke, `demo:local`, contract flow, indexer E2E, 재시작 복구 모두 통과.
+  142 단위, 두 smoke, `demo:local`, contract flow, indexer E2E, 재시작 복구 모두 통과.
 
 ## 3. 남은 일 (이 순서대로)
 

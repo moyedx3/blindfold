@@ -73,15 +73,23 @@ export function App() {
 
   const topUp = useCallback(async (amountStar: bigint) => {
     if (!session || busy || topping) return;
+    if (bal && bal.publicNight < amountStar) {
+      setError(`You need ${formatNight(amountStar)} public NIGHT to top up; you have ${formatNight(bal.publicNight)}.`);
+      return;
+    }
     setTopping(true); setError('');
     try {
       await session.client.wrap(amountStar);
       // The wallet learns about the new coin a few seconds after the block; poll up to 2 min.
       const target = (bal?.privateNight ?? 0n) + amountStar;
+      let reached = false;
       for (let i = 0; i < 40; i += 1) {
         const priv = await refreshBalances(session);
-        if (priv >= target) break;
+        if (priv >= target) { reached = true; break; }
         await new Promise((r) => setTimeout(r, 3000));
+      }
+      if (!reached) {
+        setError('Top-up submitted, but the wallet has not shown the new balance yet. Press Refresh in a moment.');
       }
     } catch (e) { setError(explainWalletError(e)); }
     finally { setTopping(false); }
@@ -96,6 +104,12 @@ export function App() {
     } catch (e) { setError(explainWalletError(e)); }
     finally { setTopping(false); }
   }, [session, busy, topping, bal, refreshBalances]);
+
+  const refreshBalance = useCallback(async () => {
+    if (!session) return;
+    setError('');
+    try { await refreshBalances(session); } catch (e) { setError(explainWalletError(e)); }
+  }, [session, refreshBalances]);
 
   const buy = useCallback(async (entry: CatalogEntry) => {
     if (busy) return;
@@ -159,7 +173,7 @@ export function App() {
           </section>) : null}
         {session && bal ? <p className="note">Public NIGHT: {formatNight(bal.publicNight)} · Private balance: {formatNight(bal.privateNight)}{topping ? ' (updating…)' : ''} · DUST: {bal.dust.toString()}</p> : null}
         {session && !purchase ? (
-          <section className="panel"><div className="panel-head"><h2>Private balance</h2><button onClick={() => void cashOut()} disabled={busy || topping || !bal || bal.privateNight === 0n}>Cash out</button></div>
+          <section className="panel"><div className="panel-head"><h2>Private balance</h2><button aria-label="Refresh balance" onClick={() => void refreshBalance()} disabled={busy || topping || !session}>Refresh</button><button onClick={() => void cashOut()} disabled={busy || topping || !bal || bal.privateNight === 0n}>Cash out</button></div>
             <div className="actions">{TOP_UP_DENOMINATIONS_STAR.map((d) => <button key={d.toString()} className="primary" disabled={busy || topping} onClick={() => void topUp(d)}>{topping ? 'proving…' : `Top up ${formatNight(d)}`}</button>)}</div>
             <p className="note">Purchases spend this balance, not your public NIGHT. Top up enough for several purchases; topping up right before you buy links the two transactions.</p>
           </section>) : null}
