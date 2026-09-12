@@ -11,6 +11,7 @@ export ledger purchaseCount: Counter;
 export ledger purchases: Map<Uint<64>, Bytes<32>>;           // index -> buyer one-time X25519 pubkey
 export ledger purchaseDrop: Map<Uint<64>, Uint<64>>;         // index -> dropId
 export ledger escrow: Map<Uint<64>, QualifiedShieldedCoinInfo>; // index -> contract-held coin
+export ledger sold: Set<Uint<64>>;                            // content ids that have been bought (one buyer each)
 export ledger wrapNonce: Bytes<32>;                          // evolves on every mint; keeps coin nonces unique
 
 witness creatorSecret(): Bytes<32>;
@@ -43,6 +44,7 @@ export circuit wrap(amount: Uint<64>): [] {
 
 export circuit purchase(dropId: Uint<64>, ePub: Bytes<32>, coin: ShieldedCoinInfo): [] {
   assert(drops.member(disclose(dropId)), "unknown drop");
+  assert(!sold.member(disclose(dropId)), "already sold");
   assert(coin.color == paymentToken(), "must pay in bNIGHT");
   assert(coin.value >= drops.lookup(disclose(dropId)), "underpaid");
   receiveShielded(disclose(coin));
@@ -50,6 +52,7 @@ export circuit purchase(dropId: Uint<64>, ePub: Bytes<32>, coin: ShieldedCoinInf
   purchases.insert(idx, disclose(ePub));
   purchaseDrop.insert(idx, disclose(dropId));
   escrow.insertCoin(idx, disclose(coin), right<ZswapCoinPublicKey, ContractAddress>(kernel.self()));
+  sold.insert(disclose(dropId));
   purchaseCount.increment(1);
 }
 

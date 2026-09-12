@@ -313,7 +313,7 @@ export function App() {
           </section>
 
           <section className="panel">
-            <div className="panel-head"><h2>Private balance</h2><button onClick={() => void refreshPrivateBalance()} disabled={!session}>Refresh</button></div>
+            <div className="panel-head"><div className="head-title"><h2>Private balance</h2>{privateNight !== null ? <span className="price">{formatNight(privateNight)} NIGHT{balanceUpdating ? " (updating…)" : ""}</span> : null}</div><button onClick={() => void refreshPrivateBalance()} disabled={!session}>Refresh</button></div>
             <p className="note">Withdrawn purchases arrive here as bNIGHT, the shielded token this contract mints. Cash out sends the whole balance to your public NIGHT address.</p>
             <button className="primary" disabled={!session || running || cashingOut || privateNight === null || privateNight === 0n} onClick={() => void cashOut()}>{cashingOut ? 'proving…' : 'Cash out to public NIGHT'}</button>
           </section>

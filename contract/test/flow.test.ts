@@ -93,6 +93,11 @@ describe.skipIf(!process.env.DEVNET)('blindfold contract flow (local devnet)', (
     await expect(buyer.callTx.purchase(1n, randomBytes(32), nightCoin(PRICE))).rejects.toThrow(/must pay in bNIGHT/);
   });
 
+  it('purchase rejects an underpaid coin', async () => {
+    const buyer = await asStranger();
+    await expect(buyer.callTx.purchase(1n, randomBytes(32), paymentCoin(address, PRICE - 1n))).rejects.toThrow(/underpaid/);
+  });
+
   it('purchase escrows a bNIGHT coin and records the one-time key', async () => {
     const before = privateNight(await ctx.wallet.waitForSyncedState(), color);
     const buyer = await asStranger();
@@ -107,9 +112,9 @@ describe.skipIf(!process.env.DEVNET)('blindfold contract flow (local devnet)', (
     expect(L.escrow.lookup(0n).value).toBe(PRICE);
   });
 
-  it('purchase rejects an underpaid coin', async () => {
+  it('purchase refuses a second sale of the same content', async () => {
     const buyer = await asStranger();
-    await expect(buyer.callTx.purchase(1n, randomBytes(32), paymentCoin(address, PRICE - 1n))).rejects.toThrow(/underpaid/);
+    await expect(buyer.callTx.purchase(1n, randomBytes(32), paymentCoin(address, PRICE))).rejects.toThrow(/already sold/);
   });
 
   it('withdraw by a non-owner is rejected', async () => {

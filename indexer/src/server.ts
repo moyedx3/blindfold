@@ -29,7 +29,16 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
     try { return await buildAttestResponse(deps.tee, deps.kp); }
     catch (e) { reply.code(503); return { error: (e as Error).message }; }
   });
-  app.get('/catalog', async () => deps.catalog.publicEntries());
+  // Each content sells once: anything the ledger records as purchased leaves the public catalog.
+  app.get('/catalog', async () => {
+    const entries = deps.catalog.publicEntries();
+    try {
+      const sold = new Set((await deps.reader.read()).purchaseDrop.values());
+      return entries.filter((e) => !sold.has(BigInt(e.drop_id)));
+    } catch {
+      return entries;
+    }
+  });
 
   app.post('/provision', async (req, reply) => {
     const body = req.body as Buffer | undefined;

@@ -63,3 +63,19 @@ describe('server', () => {
     expect(r.headers['access-control-allow-origin']).toBe('*');
   });
 });
+
+describe('catalog hides content that has already been bought', () => {
+  it('drops entries whose id appears in the ledger purchases', async () => {
+    await sodiumReady();
+    const catalog = new Catalog();
+    const h = 'cd'.repeat(32);
+    catalog.upsert({ dropId: 1n, priceStar: 10n, kDrop: new Uint8Array(32), hContent: h, title: 'sold one' });
+    catalog.upsert({ dropId: 2n, priceStar: 10n, kDrop: new Uint8Array(32), hContent: h, title: 'still for sale' });
+    const reader = new StaticLedgerReader({ drops: new Map([[1n, 10n], [2n, 10n]]), kCommit: new Map(), purchaseCount: 1n, purchases: new Map([[0n, new Uint8Array(32)]]), purchaseDrop: new Map([[0n, 1n]]) } as any);
+    const seedHex = '11'.repeat(32);
+    const server = buildServer({ tee: new DevTee(seedHex), kp: keypairFromSeed(fromHex(seedHex)), catalog, content: new MemoryBucket(), dispatch: new MemoryBucket(), reader, network: 'undeployed', contractAddress: 'ab'.repeat(32) } as any);
+    const body = (await server.inject({ method: 'GET', url: '/catalog' })).json() as Array<{ drop_id: number }>;
+    expect(body.map((e) => e.drop_id)).toEqual([2]);
+    await server.close();
+  });
+});

@@ -27,6 +27,7 @@ export class FakeBlindfoldClient implements BlindfoldClient {
     const p = this.view.drops.get(dropId);
     if (p === undefined) throw new Error('unknown drop');
     if (price < p) throw new Error('underpaid');
+    if ([...this.view.purchaseDrop.values()].includes(dropId)) throw new Error('already sold');
     if (price > this.balance) throw new Error('insufficient private balance');
     this.balance -= price;
     const i = this.view.purchaseCount;
