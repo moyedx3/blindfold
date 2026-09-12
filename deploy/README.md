@@ -130,6 +130,14 @@ docker pull ghcr.io/moyedx3/blindfold-indexer:0.1.0
 docker inspect --format='{{index .RepoDigests 0}}' ghcr.io/moyedx3/blindfold-indexer:0.1.0
 ```
 
+The same build runs in GitHub Actions on `linux/amd64` (what Phala's TDX hosts run), which is the preferred
+route from an Apple Silicon laptop: Actions → **release-image** → Run workflow, or
+
+```bash
+gh workflow run release-image.yml --ref main -f tag=0.1.0
+gh run watch   # the job summary prints IMAGE=ghcr.io/...@sha256:<digest>
+```
+
 Make the GHCR package public so the CVM can pull it without registry credentials. Put the resulting
 `ghcr.io/...@sha256:...` value in `deploy/cvm/.env` and record the same digest in
 `deploy/networks.json`. Never place a GHCR token in the compose file or repository.

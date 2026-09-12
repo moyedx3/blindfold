@@ -68,7 +68,7 @@ DUST가 쌓이는 데 시간이 걸리므로 가장 먼저 시작한다.
 
 외부 의존이 가장 많은 구간이라 여기서 막히면 E와 F가 밀린다. 절차는 `deploy/README.md`의 "Build and publish the indexer image"와 "Phala CVM".
 
-- [ ] 인덱서 이미지 빌드·GHCR push, `docker inspect`로 digest 확보. 패키지를 public으로.
+- [ ] 인덱서 이미지 빌드·GHCR push: Actions의 **release-image** 워크플로(`gh workflow run release-image.yml --ref main`)가 linux/amd64로 빌드하고 digest를 job summary에 찍는다. GitHub 패키지 설정에서 public으로 전환.
 - [ ] `deploy/cvm/.env` 작성(IMAGE는 digest 고정, CONTRACT_ADDRESS는 C의 값) → `phala deploy …` → 공개 HTTPS endpoint 확보.
 - [ ] `curl <endpoint>/attest`가 `"dev"`가 아닌 긴 quote를 주는지, `<endpoint>/contract`가 Preprod 주소를 주는지.
 - [ ] `npm run attest:inspect -- <endpoint>` 통과: TCB `UpToDate`, `report_data = sha256(provisioning_pubkey)`, RTMR3 출력.
