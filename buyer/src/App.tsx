@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { explainWalletError, type WalletChoice } from '@blindfold/midnight-web';
+import { explainWalletError, unshieldedAddress, TOP_UP_DENOMINATIONS_STAR, type WalletChoice } from '@blindfold/midnight-web';
 import type { CatalogEntry, DropApi } from './api';
 import { HttpDropApi } from './api';
 import { createPurchaseFor, submitPurchase } from './buy';
@@ -9,6 +9,7 @@ import { MockDropApi } from './mockApi';
 import { clearPurchase, loadPurchase, savePurchase } from './persist';
 import { DispatchPoller, type UnlockResult } from './poller';
 import { formatNight } from './price';
+import { canBuy, smallestTopUpCovering } from './privateBalance';
 import { fromRecoveryFile, toRecoveryFile, type Purchase } from './purchase';
 import { detectKind, mimeFor } from './render';
 import { sodiumReady } from './seal';
@@ -30,9 +31,10 @@ export function App() {
   const [api, setApi] = useState<DropApi | null>(null);
   const [catalog, setCatalog] = useState<CatalogEntry[]>([]);
   const [session, setSession] = useState<Session | null>(null);
-  const [bal, setBal] = useState<{ shieldedNight: bigint; dust: bigint } | null>(null);
+  const [bal, setBal] = useState<{ publicNight: bigint; privateNight: bigint; dust: bigint } | null>(null);
   const [purchase, setPurchase] = useState<Purchase | null>(null);
   const [busy, setBusy] = useState(false);
+  const [topping, setTopping] = useState(false);
   const [unlock, setUnlock] = useState<UnlockResult | null>(null);
   const [error, setError] = useState('');
   const [remember, setRemember] = useState(true);
@@ -57,11 +59,42 @@ export function App() {
     return () => { alive = false; clearInterval(id); };
   }, [api, purchase, unlock]);
 
+  const refreshBalances = useCallback(async (s: Session) => {
+    const [b, priv] = await Promise.all([balances(s.wallet), s.client.privateBalance()]);
+    setBal({ publicNight: b.unshieldedNight, privateNight: priv, dust: b.dust });
+  }, []);
+
   const connect = useCallback(async (choice: WalletChoice) => {
     if (!api) return; setBusy(true); setError('');
-    try { const s = await openSession(api, choice); setSession(s); const b = await balances(s.wallet); setBal({ shieldedNight: b.shieldedNight, dust: b.dust }); }
+    try { const s = await openSession(api, choice); setSession(s); await refreshBalances(s); }
     catch (e) { setError(explainWalletError(e)); } finally { setBusy(false); }
-  }, [api]);
+  }, [api, refreshBalances]);
+
+  const topUp = useCallback(async (amountStar: bigint) => {
+    if (!session || busy || topping) return;
+    setTopping(true); setError('');
+    try {
+      await session.client.wrap(amountStar);
+      // The wallet learns about the new coin a few seconds after the block; poll up to 2 min.
+      const target = (bal?.privateNight ?? 0n) + amountStar;
+      for (let i = 0; i < 40; i += 1) {
+        await refreshBalances(session);
+        if ((await session.client.privateBalance()) >= target) break;
+        await new Promise((r) => setTimeout(r, 3000));
+      }
+    } catch (e) { setError(explainWalletError(e)); }
+    finally { setTopping(false); }
+  }, [session, busy, topping, bal, refreshBalances]);
+
+  const cashOut = useCallback(async () => {
+    if (!session || busy || topping || !bal || bal.privateNight === 0n) return;
+    setTopping(true); setError('');
+    try {
+      await session.client.unwrap(bal.privateNight, await unshieldedAddress(session.wallet));
+      await refreshBalances(session);
+    } catch (e) { setError(explainWalletError(e)); }
+    finally { setTopping(false); }
+  }, [session, busy, topping, bal, refreshBalances]);
 
   const buy = useCallback(async (entry: CatalogEntry) => {
     if (busy) return;
@@ -89,8 +122,9 @@ export function App() {
       // running. The user can dismiss ("Keep waiting") or give up on it ("Discard key").
     } finally {
       setBusy(false);
+      if (session) void refreshBalances(session);
     }
-  }, [api, session, remember, busy]);
+  }, [api, session, remember, busy, refreshBalances]);
 
   const reset = useCallback(() => { setPurchase(null); setUnlock(null); pollerRef.current = null; clearPurchase(); }, []);
   const downloadRecovery = useCallback(() => { if (!purchase) return; triggerDownload(new Blob([JSON.stringify(toRecoveryFile(purchase), null, 2)], { type: 'application/json' }), `blindfold-recovery-${purchase.dropId}-${purchase.id}.json`); }, [purchase]);
@@ -112,14 +146,22 @@ export function App() {
             {wallets.length === 0 ? <p className="note">No Midnight wallet found. Install Lace and reload.</p> :
               <ul className="drops">{wallets.map((w) => <li key={w.key}><strong>{w.name}</strong><button className="primary" disabled={busy} onClick={() => void connect(w)}>Connect</button></li>)}</ul>}
           </section>) : null}
-        {session && bal ? <p className="note">Shielded NIGHT: {formatNight(bal.shieldedNight)} · DUST: {bal.dust.toString()}</p> : null}
+        {session && bal ? <p className="note">Public NIGHT: {formatNight(bal.publicNight)} · Private balance: {formatNight(bal.privateNight)}{topping ? ' (updating…)' : ''} · DUST: {bal.dust.toString()}</p> : null}
+        {session && !purchase ? (
+          <section className="panel"><div className="panel-head"><h2>Private balance</h2><button onClick={() => void cashOut()} disabled={busy || topping || !bal || bal.privateNight === 0n}>Cash out</button></div>
+            <div className="actions">{TOP_UP_DENOMINATIONS_STAR.map((d) => <button key={d.toString()} className="primary" disabled={busy || topping} onClick={() => void topUp(d)}>{topping ? 'proving…' : `Top up ${formatNight(d)}`}</button>)}</div>
+            <p className="note">Purchases spend this balance, not your public NIGHT. Top up enough for several purchases; topping up right before you buy links the two transactions.</p>
+          </section>) : null}
         {!purchase ? (
           <section className="panel"><div className="panel-head"><h2>Catalog</h2><button onClick={() => void loadCatalog()}>Refresh</button></div>
             <label className="remember"><input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} /> Keep on this device for 24h (on by default; uncheck to keep the key only in this tab)</label>
             {catalog.length === 0 ? <p className="note">No drops yet.</p> :
-              <ul className="drops">{catalog.map((d) => <li key={d.drop_id}><div><strong>{d.title}</strong><span className="price">{formatNight(d.price_star)} NIGHT</span></div>
-                <button className="primary" disabled={busy || !session} onClick={() => void buy(d)}>{busy ? 'proving…' : 'Buy'}</button></li>)}</ul>}
-            <p className="note">{session ? 'Buying sends one shielded transaction from your wallet; proving takes 20 to 60 seconds.' : 'Connect a wallet above to buy. Browsing is free.'}</p>
+              <ul className="drops">{catalog.map((d) => {
+                const price = BigInt(d.price_star);
+                const affordable = Boolean(session && bal && canBuy(bal.privateNight, price));
+                return <li key={d.drop_id}><div><strong>{d.title}</strong><span className="price">{formatNight(d.price_star)} NIGHT</span></div>
+                  <button className="primary" disabled={busy || topping || !session || !affordable} onClick={() => void buy(d)}>{busy ? 'proving…' : affordable || !session ? 'Buy' : 'Top up first'}</button></li>; })}</ul>}
+            <p className="note">{!session ? 'Connect a wallet above to buy. Browsing is free.' : 'Buying sends one shielded transaction from your private balance; proving takes 20 to 60 seconds.'}{session && bal && catalog.some((d) => !canBuy(bal.privateNight, BigInt(d.price_star))) ? ` Top up ${formatNight(smallestTopUpCovering(BigInt(catalog[0].price_star), bal.privateNight) ?? 50_000_000n)} NIGHT to buy the first drop.` : ''}</p>
           </section>) : null}
         {purchase && !unlock ? (
           <section className="panel"><div className="panel-head"><h2>Paid for “{purchase.title}”</h2><button onClick={discardKey}>Discard key</button></div>

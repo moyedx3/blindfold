@@ -23,7 +23,7 @@ export async function openSession(api: DropApi, choice: WalletChoice): Promise<S
     return { wallet, client, contractAddress: info.contract_address, network: info.network };
   }
   const providers = await buildProviders(wallet, { zkAssetsUrl: `${window.location.origin}/contract/blindfold`, storeName: 'blindfold-buyer', proofServerFallback: import.meta.env.VITE_PROOF_SERVER_URL ?? 'http://localhost:6300' });
-  const client = await connectContract(providers, info.contract_address, crypto.getRandomValues(new Uint8Array(32)), `blindfold-buyer-${info.contract_address.slice(0, 8)}`, info.network);
+  const client = await connectContract(providers, info.contract_address, crypto.getRandomValues(new Uint8Array(32)), `blindfold-buyer-${info.contract_address.slice(0, 8)}`, info.network, `${window.location.origin}/contract/blindfold`, wallet);
   return { wallet, client, contractAddress: info.contract_address, network: info.network };
 }
 
