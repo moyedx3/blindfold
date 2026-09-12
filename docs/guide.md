@@ -1,6 +1,7 @@
 # Blindfold: team guide
 
-> For humans and for coding agents. Read this first, then `deploy/README.md`.
+> For humans and for coding agents. Read this first, then `docs/status.md` (what is done, what is verified,
+> what is left, with owners) and `deploy/README.md`.
 > `spike/NOTES.md` is historical evidence from the 2026-09-05 feasibility spike.
 > Last verified: 2026-09-12.
 

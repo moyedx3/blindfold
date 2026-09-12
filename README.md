@@ -21,7 +21,8 @@ As of 2026-09-12, `main` contains the contract, the TEE indexer, the shared wall
 the creator app, the deployment tooling, and CI. At the merge the suite passed locally: 133 unit tests, both
 fake-wallet browser smokes, local Midnight devnet deployment, six real-chain contract tests, the indexer
 purchase-to-key-delivery E2E test, and an indexer restart followed by re-provisioning from the recovery
-bundle. These results do not establish public-network or real-TEE readiness.
+bundle. These results do not establish public-network or real-TEE readiness. The team's live checklist of
+what is done, verified, and still open is [`docs/status.md`](docs/status.md).
 
 A complete creator-to-buyer Lace run, public Preprod deployment, Phala CVM verification, and mainnet
 readiness checks remain TODO. See the [deployment verification record and TODOs](docs/deployment-verification-2026-09-11.md).
