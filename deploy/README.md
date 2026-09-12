@@ -210,8 +210,15 @@ Configure the creator with:
 ```bash
 VITE_INDEXER_URL=https://<cvm-endpoint> \
 VITE_EXPECTED_MEASUREMENT_HEX=<96-hex-rtmr3> \
+VITE_PCCS_URL=https://pccs.phala.network \
 npm run dev -w creator
 ```
+
+The creator verifies the quote inside the browser, which fetches Intel collateral from a PCCS. Intel's
+own PCS sends no CORS headers, so a browser cannot use it; Phala's PCCS does (and is `@phala/dcap-qvl`'s
+default). Wallets: 1AM proves inside the wallet and sponsors DUST, so on Preprod it needs neither a
+local proof server nor DUST registration (verified 2026-09-13 for the buyer top-up); Lace on Preprod was
+blocked by its own sync never completing, so it remains the local-devnet wallet.
 
 Then run the pinned live check:
 
