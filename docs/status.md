@@ -7,8 +7,8 @@
 
 ## 한 줄 답
 
-**로컬 데모는 완성됐고 검증됐다. 제출용 데모(공개 테스트넷 + 실제 TEE + 실제 지갑 두 개)는 아직이다.**
-남은 일은 전부 외부 자원(자금 있는 지갑, Phala 계정, GHCR)이 필요한 릴리스 단계다. 섹션 3을 순서대로 하면 된다.
+**로컬 데모는 완성·검증됐고, 2026-09-12에 Preprod 컨트랙트와 Phala CVM(실제 TDX)까지 올라가 `smoke:live`가 통과했다.**
+남은 것은 실제 Lace 두 지갑으로 공개 환경에서 등록 → 구매 → withdraw 한 바퀴(E), 그리고 영상·제출물(F)이다. 섹션 3을 순서대로 하면 된다.
 
 ## 1. 무엇이 어디까지 됐나
 
@@ -59,10 +59,10 @@ DUST가 쌓이는 데 시간이 걸리므로 가장 먼저 시작한다.
 
 ### C. Preprod 컨트랙트 배포 (B 다음) — 담당: ___
 
-- [ ] `npm run deploy -w contract -- --network preprod` → 출력된 64-hex 주소 기록.
-- [ ] `npm run ledger -w contract -- <주소> --network preprod` 로 조회 (주소를 `--network`보다 먼저).
-- [ ] <https://preprod.midnightexplorer.com/> 에서 배포 tx 확인.
-- [ ] `deploy/networks.json`의 `preprod.contract_address`에 **검증한 값만** 기록하고 커밋.
+- [x] `npm run deploy -w contract -- --network preprod` — 2026-09-12 · 컨트랙트 `34e1bdbdb2602d457559d6229730d5486da870216da9478e322bbefea4785d18`. 배포 지갑 첫 sync에 약 55분(251만 블록), DUST 등록·대기는 스크립트가 처리.
+- [x] `npm run ledger -w contract -- <주소> --network preprod` — drops 없음, purchaseCount 0 (빈 초기 상태 확인).
+- [ ] <https://preprod.midnightexplorer.com/> 에서 컨트랙트 주소 조회해 보이는지 확인 (브라우저에서).
+- [x] `deploy/networks.json`의 `preprod.contract_address` 기록 — 2026-09-12.
 
 ### D. Phala CVM 배포와 실제 TDX 검증 (C와 병렬 시작 가능. Phala 계정·크레딧, GHCR 필요) — 담당: ___
 
@@ -75,8 +75,9 @@ DUST가 쌓이는 데 시간이 걸리므로 가장 먼저 시작한다.
 - [x] `/attest`가 진짜 quote(10,020 hex, TDX 1.5) 반환 — 2026-09-12. `/contract`는 아직 자리표시자 주소.
 - [x] `npm run attest:inspect -- <endpoint>` 통과 — 2026-09-12: `UpToDate`, report_data 바인딩 ok, RTMR3 `0b2236ad…8468` (Phala `cvms attestation`의 tcb_info와 일치).
 - [x] RTMR3, endpoint, image digest를 `deploy/networks.json`에 기록 — 2026-09-12. `contract_address`는 null 유지.
-- [ ] `npm run smoke:live` 통과 — C(Preprod 컨트랙트)가 끝나야 가능. 현재는 contract_address가 null이라 스크립트가 시작 단계에서 멈춘다.
-- [ ] CVM 재시작 후 RTMR3가 그대로인지, 이미지를 다시 빌드하면 바뀌는지 확인. 바뀌면 재핀 + 재-provision. **주의:** Phala 문서상 RTMR3에는 compose-hash뿐 아니라 app-id, instance-id, key-provider가 함께 들어간다. 즉 RTMR3 핀은 "이 CVM 인스턴스"를 고정하는 것이라 CVM을 새로 만들면 무조건 바뀐다. 데모용 단일 인스턴스에는 문제없지만 발표에서는 "인스턴스 핀"이라고 정확히 말한다.
+- [x] `npm run smoke:live` 통과 — 2026-09-12 06:45Z: health ok, `/contract` = Preprod 주소, 카탈로그 0개, quote UpToDate, RTMR3 핀 일치, 키 바인딩 ok (`deploy/evidence/smoke-live.json`, gitignored).
+- [x] **확인됨: env만 바꾼 `phala deploy` 업데이트로도 RTMR3가 바뀐다** (`0b2236ad…` → `3509154d…`, 2026-09-12). 반면 provisioning 공개키는 그대로다(app-id가 같으면 KMS 파생 키가 같음). 즉 업데이트 뒤에는 **재핀만** 필요하고 재-provision은 필요 없다. 새 CVM을 만들면 둘 다 바뀐다.
+- [ ] CVM stop → start(같은 인스턴스) 후 RTMR3가 유지되는지 확인. 데모 전 비용 절감 여부를 정하려면 필요. **주의:** Phala 문서상 RTMR3에는 compose-hash뿐 아니라 app-id, instance-id, key-provider가 함께 들어간다. 즉 RTMR3 핀은 "이 CVM 인스턴스"를 고정하는 것이라 CVM을 새로 만들면 무조건 바뀐다. 데모용 단일 인스턴스에는 문제없지만 발표에서는 "인스턴스 핀"이라고 정확히 말한다.
 - [x] 실제 quote를 크리에이터 검증기 코드로 통과 — 2026-09-12: 위 quote를 `creator/test/fixtures/phala-attest-2026-09-12.json`에 저장하고 `LIVE_QVL=1 npx vitest run test/live-quote.test.ts`(creator/)로 `verifyQuote` + `validateVerifiedQuote`가 UpToDate·RTMR3·키 바인딩을 통과. 브라우저 자체에서 돌리는 확인은 아래 항목.
 - [ ] **브라우저에서 실전 확인:** 크리에이터 앱을 `VITE_INDEXER_URL=<endpoint> VITE_EXPECTED_MEASUREMENT_HEX=<rtmr3>`로 띄워 실제 quote로 provision이 통과하는지. `creator/src/qvl-verifier.ts`는 아직 실제 quote를 본 적이 없다. 실패하면 이슈로 등록하고 `attest:inspect` 결과와 대조.
 - [ ] 공개 네트워크에 붙었을 때 dev mode 체크박스가 비활성인지.

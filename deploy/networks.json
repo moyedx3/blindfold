@@ -4,11 +4,11 @@
     "indexer_url": "http://127.0.0.1:8080"
   },
   "preprod": {
-    "contract_address": null,
+    "contract_address": "34e1bdbdb2602d457559d6229730d5486da870216da9478e322bbefea4785d18",
     "midnight_indexer_url": "https://indexer.preprod.midnight.network/api/v4/graphql",
     "midnight_indexer_ws_url": "wss://indexer.preprod.midnight.network/api/v4/graphql/ws",
     "indexer_url": "https://94ef50c5719468f34cdb06e000e8f3ee415f0429-8080.dstack-pha-prod5.phala.network",
-    "measurement_rtmr3": "0b2236ad7cf2e4e0358dc1c295be6bbdd749019be8b2610ae9d5c3150f217bd7a2f67df46818de86c4b60315cb8a8468",
+    "measurement_rtmr3": "3509154d64f67189f9dd12ede1c28662efd69080bfb8215874019f2e54bb8dd08d0072bc40be0b66de3769c3980af158",
     "image_digest": "sha256:2b09efbe6f99e8eb89b1ee31da5416ff980c14432bf1ebbc56b830fa5ab4d4e3"
   }
 }

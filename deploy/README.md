@@ -185,8 +185,11 @@ Do not pass `--no-public-tcbinfo`: keep the TCB info public so `attest:inspect` 
 cross-checked from the Phala dashboard. Logs stay private (`phala.toml` already sets `public_logs = false`).
 
 Note on the pin: Phala documents RTMR3 as covering the compose hash **and** the app id, instance id,
-and key provider. Pinning RTMR3 therefore pins this CVM instance, not just the image. Recreating the
-CVM changes it even with the same digest; a restart of the same instance should not.
+and key provider. Pinning RTMR3 therefore pins this CVM instance, not just the image. Observed on
+2026-09-12: an env-only `phala deploy` update of the same CVM changed RTMR3 while the provisioning
+public key stayed the same (same app id, same KMS-derived key). So after any update: re-run
+`attest:inspect`, re-pin `measurement_rtmr3`, re-run `smoke:live`; creators do not need to re-provision.
+Recreating the CVM changes both the measurement and the key, which does require re-provisioning.
 
 Use `phala cvms get blindfold-indexer --json` to obtain the public HTTPS endpoint. From the repository root,
 cryptographically inspect the indexer's own quote and key binding:
