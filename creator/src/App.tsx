@@ -16,6 +16,8 @@ import "./styles.css";
 
 const indexerUrl = import.meta.env.VITE_INDEXER_URL ?? "http://localhost:8080";
 const defaultMeasurement = import.meta.env.VITE_EXPECTED_MEASUREMENT_HEX ?? "";
+// One deployment hosts both apps: the buyer at / and the creator at /creator/. Dev servers use two ports.
+const BUYER_URL: string = import.meta.env.VITE_BUYER_URL ?? (import.meta.env.DEV ? "http://127.0.0.1:5173/" : "/");
 
 type StepState = "idle" | "running" | "done" | "error";
 type Steps = { encrypt: StepState; register: StepState; attest: StepState; provision: StepState };
@@ -245,7 +247,7 @@ export function App() {
     <main className="shell">
       <div className="xp-window">
         <div className="title-bar">
-          <div className="wintitle"><span className="winicon">🕶️</span><h1>Blindfold Creator</h1></div>
+          <div className="wintitle"><span className="winicon">🕶️</span><h1>Blindfold Creator</h1><a className="switch-app" href={BUYER_URL}>← Buyer app</a></div>
           <div className="modes">{session ? <span className="on">{session.wallet.name} · {session.network}</span> : <span>not connected</span>}</div>
         </div>
         <div className="window-body">

@@ -19,6 +19,8 @@ import './styles.css';
 
 const POLL_MS = 3000;
 const indexerUrl = import.meta.env.VITE_INDEXER_URL ?? 'http://localhost:8080';
+// One deployment hosts both apps: the buyer at / and the creator at /creator/. Dev servers use two ports.
+const CREATOR_URL: string = import.meta.env.VITE_CREATOR_URL ?? (import.meta.env.DEV ? 'http://127.0.0.1:5175/' : '/creator/');
 
 async function makeApi(): Promise<DropApi> {
   if (!FAKE) return new HttpDropApi(indexerUrl);
@@ -162,7 +164,7 @@ export function App() {
 
   return (
     <main className="shell"><div className="xp-window">
-      <div className="title-bar"><div className="wintitle"><span className="winicon">🕶️</span><h1>Blindfold</h1></div>
+      <div className="title-bar"><div className="wintitle"><span className="winicon">🕶️</span><h1>Blindfold</h1><a className="switch-app" href={CREATOR_URL}>Creator app →</a></div>
         <div className="modes">{session ? <span className="on">{session.wallet.name} · {session.network}</span> : <span>not connected</span>}</div></div>
       <div className="window-body">
         {error ? <p className="error">{error}</p> : null}

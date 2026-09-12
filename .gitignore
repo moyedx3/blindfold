@@ -35,3 +35,5 @@ buyer/playwright-report/
 .local/
 # Redacted live-smoke output (upload deliberately as CI evidence when needed)
 deploy/evidence/
+# one-URL static site assembled by deploy/scripts/build-site.mjs
+site/

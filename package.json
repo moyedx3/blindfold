@@ -2,7 +2,13 @@
   "name": "blindfold",
   "private": true,
   "type": "module",
-  "workspaces": ["contract", "indexer", "packages/*", "buyer", "creator"],
+  "workspaces": [
+    "contract",
+    "indexer",
+    "packages/*",
+    "buyer",
+    "creator"
+  ],
   "scripts": {
     "compile": "npm run compile -w contract",
     "test": "npm test --workspaces --if-present",
@@ -16,9 +22,12 @@
     "qa:secrets": "node deploy/scripts/check-secret-sinks.mjs",
     "qa:demo": "bash deploy/scripts/qa-demo.sh",
     "smoke:live": "npx tsx deploy/scripts/smoke-live.ts",
-    "attest:inspect": "npx tsx deploy/scripts/inspect-attestation.ts"
+    "attest:inspect": "npx tsx deploy/scripts/inspect-attestation.ts",
+    "site:build": "node deploy/scripts/build-site.mjs"
   },
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "devDependencies": {
     "@phala/dcap-qvl": "^0.5.2",
     "libsodium-wrappers": "0.7.15",
@@ -26,5 +35,7 @@
     "typescript": "^5.9.3",
     "zod": "^4.4.3"
   },
-  "overrides": { "@midnight-ntwrk/onchain-runtime-v3": "3.0.0" }
+  "overrides": {
+    "@midnight-ntwrk/onchain-runtime-v3": "3.0.0"
+  }
 }

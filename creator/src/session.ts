@@ -42,7 +42,7 @@ export async function openSession(indexerUrl: string, choice: WalletChoice): Pro
     throw new Error(`wallet is on ${wallet.networkId}, the contract lives on ${contract.network}. Switch the wallet network.`);
   }
   const providers = await buildProviders(wallet, {
-    zkAssetsUrl: `${window.location.origin}/contract/blindfold`,
+    zkAssetsUrl: `${window.location.origin}${import.meta.env.BASE_URL}contract/blindfold`,
     storeName: "blindfold-creator",
     proofServerUrl: import.meta.env.VITE_PROOF_SERVER_URL,
     proofServerFallback: "http://localhost:6300",
@@ -53,7 +53,7 @@ export async function openSession(indexerUrl: string, choice: WalletChoice): Pro
     secret,
     `blindfold-creator-${contract.contract_address.slice(0, 8)}`,
     contract.network,
-    `${window.location.origin}/contract/blindfold`,
+    `${window.location.origin}${import.meta.env.BASE_URL}contract/blindfold`,
     wallet,
   );
   return { wallet, client, contractAddress: contract.contract_address, network: contract.network };
