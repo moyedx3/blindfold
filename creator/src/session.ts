@@ -44,7 +44,8 @@ export async function openSession(indexerUrl: string, choice: WalletChoice): Pro
   const providers = await buildProviders(wallet, {
     zkAssetsUrl: `${window.location.origin}/contract/blindfold`,
     storeName: "blindfold-creator",
-    proofServerFallback: import.meta.env.VITE_PROOF_SERVER_URL ?? "http://localhost:6300",
+    proofServerUrl: import.meta.env.VITE_PROOF_SERVER_URL,
+    proofServerFallback: "http://localhost:6300",
   });
   const client = await connectContract(
     providers,

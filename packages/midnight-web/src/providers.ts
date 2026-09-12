@@ -22,9 +22,20 @@ export function withPostBlockUpdate<P extends { queryZSwapAndContractState: (...
   } as P;
 }
 
-export async function buildProviders(w: ConnectedWallet, opts: { zkAssetsUrl: string; storeName: string; proofServerFallback?: string }): Promise<BlindfoldProviders> {
+/**
+ * Which proof server proves the DApp's circuit calls. An explicit `proofServerUrl` (the app's
+ * VITE_PROOF_SERVER_URL) wins: on public networks Lace reports its own prover, which a browser page on
+ * 127.0.0.1 cannot always reach ("'prove' returned an error: Failed to fetch"). Otherwise the wallet's
+ * configured prover, then the local default.
+ */
+export function chooseProofServer(walletProver: string | undefined, opts: { proofServerUrl?: string; proofServerFallback?: string }): string {
+  return opts.proofServerUrl || walletProver || opts.proofServerFallback || 'http://localhost:6300';
+}
+
+export async function buildProviders(w: ConnectedWallet, opts: { zkAssetsUrl: string; storeName: string; proofServerUrl?: string; proofServerFallback?: string }): Promise<BlindfoldProviders> {
   const zkConfigProvider = new FetchZkConfigProvider<'createDrop' | 'purchase' | 'withdraw' | 'wrap' | 'unwrap'>(opts.zkAssetsUrl, fetch.bind(globalThis));
-  const proofServer = w.proverServerUri ?? opts.proofServerFallback ?? 'http://localhost:6300';
+  const proofServer = chooseProofServer(w.proverServerUri, opts);
+  console.info(`[blindfold] proof server: ${proofServer}`);
   const proofProvider = httpClientProofProvider(proofServer, zkConfigProvider);
   const walletProvider = {
     getCoinPublicKey: () => w.coinPublicKey,

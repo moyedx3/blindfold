@@ -22,3 +22,13 @@ describe('withPostBlockUpdate', () => {
     expect(await wrapped.queryZSwapAndContractState('addr')).toBeNull();
   });
 });
+
+import { chooseProofServer } from '../src/providers';
+describe('chooseProofServer', () => {
+  it('prefers the app override, then the wallet prover, then the fallback', () => {
+    expect(chooseProofServer('https://lace-prover.example', { proofServerUrl: 'http://127.0.0.1:6300' })).toBe('http://127.0.0.1:6300');
+    expect(chooseProofServer('https://lace-prover.example', {})).toBe('https://lace-prover.example');
+    expect(chooseProofServer(undefined, { proofServerFallback: 'http://localhost:6300' })).toBe('http://localhost:6300');
+    expect(chooseProofServer(undefined, { proofServerUrl: '' })).toBe('http://localhost:6300');
+  });
+});
