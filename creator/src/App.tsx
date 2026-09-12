@@ -5,6 +5,7 @@ import { fromHex, toHex, utf8Bytes } from "./bytes";
 import { allowsDevAttestation, exportRecovery, importRecovery, verifyRecoveryDrop } from "./recovery";
 import { verifyAttestationOrThrow } from "./attestation";
 import { escrowForDrops, registerDrop, suggestDropId } from "./chain";
+import { ownedDropIds } from "@blindfold/midnight-web/contract";
 import { encryptContent } from "./content";
 import { listDrops, rememberDrop } from "./drops";
 import { priceNightToStar } from "./price";
@@ -59,8 +60,12 @@ export function App() {
   const refreshEscrow = useCallback(async () => {
     if (!session) return;
     const view = await session.client.ledger();
-    const knownDropIds = listDrops(session.contractAddress).map((drop) => drop.dropId);
-    setEscrow(escrowForDrops(view, knownDropIds));
+    // My drops = the ones this browser remembers registering, plus every drop whose on-chain owner
+    // is the key derived from my creator secret (so a reconnect or another device still sees them).
+    const remembered = listDrops(session.contractAddress).map((drop) => BigInt(drop.dropId));
+    let owned: bigint[] = [];
+    try { owned = ownedDropIds(view, loadOrCreateSecret()); } catch { /* a corrupted secret is reported by the secret panel */ }
+    setEscrow(escrowForDrops(view, [...new Set([...remembered, ...owned])].map(Number)));
   }, [session]);
 
   useEffect(() => {

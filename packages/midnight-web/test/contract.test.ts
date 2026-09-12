@@ -88,3 +88,25 @@ describe('bNIGHT helpers', () => {
     expect(TOP_UP_DENOMINATIONS_STAR).toEqual([5_000_000n, 10_000_000n, 50_000_000n]);
   });
 });
+
+import * as BlindfoldCompiled from '@blindfold/contract/contract';
+import { creatorPk, ownedDropIds } from '../src/contract';
+
+describe('creatorPk parity with the compiled circuit', () => {
+  it('hashes exactly like the contract', () => {
+    const secret = new Uint8Array(32).fill(7);
+    const contract: any = new (BlindfoldCompiled as any).Contract({ creatorSecret: (ctx: any) => [ctx.privateState, secret] });
+    const fromCircuit: Uint8Array = contract._creatorPk_0(secret);
+    expect(Buffer.from(creatorPk(secret)).toString('hex')).toBe(Buffer.from(fromCircuit).toString('hex'));
+    expect(creatorPk(secret)).toHaveLength(32);
+  });
+
+  it('ownedDropIds picks the drops owned by this secret, sorted', () => {
+    const mine = new Uint8Array(32).fill(3);
+    const other = new Uint8Array(32).fill(4);
+    const view: any = { drops: new Map(), kCommit: new Map(), purchaseCount: 0n, purchases: new Map(), purchaseDrop: new Map(), escrow: new Map(),
+      dropOwner: new Map([[5n, creatorPk(mine)], [2n, creatorPk(other)], [1n, creatorPk(mine)]]) };
+    expect(ownedDropIds(view, mine)).toEqual([1n, 5n]);
+    expect(ownedDropIds(view, other)).toEqual([2n]);
+  });
+});

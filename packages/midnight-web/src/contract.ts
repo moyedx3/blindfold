@@ -3,6 +3,7 @@ import { findDeployedContract } from '@midnight-ntwrk/midnight-js/contracts';
 import { getNetworkId, setNetworkId } from '@midnight-ntwrk/midnight-js/network-id';
 import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
 import { rawTokenType } from '@midnight-ntwrk/ledger-v8';
+import { CompactTypeBytes, CompactTypeVector, persistentHash } from '@midnight-ntwrk/compact-runtime';
 import { MidnightBech32m, UnshieldedAddress } from '@midnight-ntwrk/wallet-sdk-address-format';
 import * as Blindfold from '@blindfold/contract/contract';
 import type { ConnectedWallet } from './wallet';
@@ -54,6 +55,22 @@ export const TOP_UP_DENOMINATIONS_STAR: readonly bigint[] = [5_000_000n, 10_000_
 const hexToBytes = (h: string) => new Uint8Array((h.replace(/^0x/, '').match(/.{1,2}/g) ?? []).map((x) => parseInt(x, 16)));
 
 /** Hex color of the bNIGHT minted by the contract at `contractAddress` (ledger `tokenType(domainSep, contract)`). */
+const CREATOR_DOMAIN: Uint8Array = (() => { const out = new Uint8Array(32); out.set(new TextEncoder().encode('blindfold:creator:')); return out; })();
+const CREATOR_PK_TYPE = new CompactTypeVector(2, new CompactTypeBytes(32));
+
+/** Mirrors the contract's `creatorPk(sk)`: persistentHash([pad(32, "blindfold:creator:"), sk]). */
+export function creatorPk(secret: Uint8Array): Uint8Array {
+  if (secret.length !== 32) throw new Error('creator secret must be 32 bytes');
+  return persistentHash(CREATOR_PK_TYPE, [CREATOR_DOMAIN, secret]);
+}
+
+/** Drop ids whose on-chain `dropOwner` is the key derived from `secret` — the creator's drops on any device. */
+export function ownedDropIds(view: LedgerView, secret: Uint8Array): bigint[] {
+  const pk = creatorPk(secret);
+  const same = (a: Uint8Array, b: Uint8Array) => a.length === b.length && a.every((x, i) => x === b[i]);
+  return [...view.dropOwner].filter(([, owner]) => same(owner, pk)).map(([id]) => id).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+}
+
 export function paymentTokenColor(contractAddress: string): string {
   return rawTokenType(PAYMENT_DOMAIN, contractAddress).replace(/^0x/, '').toLowerCase();
 }
