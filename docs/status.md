@@ -119,7 +119,7 @@ Preprod와 메인넷에는 shielded NIGHT가 없다(`docs/superpowers/specs/2026
 - [x] 한 URL 데모 사이트 — 2026-09-13 · <https://blindfold-psi.vercel.app/> (구매자) / <https://blindfold-psi.vercel.app/creator/> (크리에이터). `npm run site:build` → `site/`를 Vercel 정적 배포. CVM 재핀 시 재빌드·재배포 필요.
 - [ ] 데모 영상: [`demo-script.md`](demo-script.md) 순서대로, 검증된 릴리스에서 녹화.
 - [ ] `README.md` 상태 문단과 `deploy/networks.json` 최종 확인. `null`이 남아 있으면 그 부분은 "미배포"로 적는다.
-- [ ] 저장소 public 전환(심사 요건), 협업자·시크릿 스캔 한 번 더 (`npm run qa:secrets`, `git log -p | grep -i seed` 같은 수동 확인).
+- [x] 저장소 public 전환 — 2026-09-13. 전환 전에 트리·전체 히스토리를 스캔(시드·주소·비공개 경로 0건)하고 git 히스토리를 다시 써서 모든 브랜치를 force-push 했다. **기존 clone은 rebase 하지 말고 새로 clone 할 것.** 시크릿 스캔은 릴리스마다 반복 (`npm run qa:secrets`, `git log -p | grep -i seed` 같은 수동 확인).
 - [ ] 제출 폼 (마감 2026-09-28 00:00 KST).
 
 ### G. 하면 좋은 것 (필수 아님)
