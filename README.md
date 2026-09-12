@@ -32,6 +32,12 @@ contract's own bNIGHT instead of shielded NIGHT (public Midnight networks have n
 redeployed to Preprod, the CVM was updated to the rebuilt image and re-pinned, and `smoke:live` passed again
 against the values now in `deploy/networks.json`. The team's live checklist of what is done, verified, and still open is [`docs/status.md`](docs/status.md).
 
+**Live demo (Preprod):** buyer at <https://blindfold-psi.vercel.app/>, creator at
+<https://blindfold-psi.vercel.app/creator/> (each title bar links to the other). Both talk to the Phala CVM
+indexer and the Preprod contract recorded in `deploy/networks.json`. Use the 1AM wallet on Preprod: it proves
+inside the wallet and sponsors DUST where it can, so no local proof server is needed. Lace works only with a
+local proof server on port 6300 and, on Preprod, its sync was not usable in our tests.
+
 A complete creator-to-buyer Lace run on Preprod, the demo video, and mainnet readiness checks remain
 TODO. See the [deployment verification record and TODOs](docs/deployment-verification-2026-09-11.md).
 No placeholder in `deploy/networks.json` should be presented as a live deployment.

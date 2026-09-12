@@ -142,6 +142,20 @@ Make the GHCR package public so the CVM can pull it without registry credentials
 `ghcr.io/...@sha256:...` value in `deploy/cvm/.env` and record the same digest in
 `deploy/networks.json`. Never place a GHCR token in the compose file or repository.
 
+## One-URL static site (Vercel)
+
+`npm run site:build` assembles `site/` with the buyer at `/` and the creator at `/creator/`, baking the
+Preprod values from `deploy/networks.json` (indexer URL, RTMR3) and `VITE_PCCS_URL=https://pccs.phala.network`
+into the bundles. Deploy it as a static site (the Vercel build image has no Compact compiler, so build locally):
+
+```bash
+npm run site:build
+cd site && npx vercel deploy --prod --yes      # project "blindfold"; first time: npx vercel link --yes --project blindfold
+```
+
+Production: <https://blindfold-psi.vercel.app/> and <https://blindfold-psi.vercel.app/creator/>. After any CVM
+re-pin, rebuild and redeploy the site: the RTMR3 is compiled into the creator bundle.
+
 ## Phala CVM
 
 Install/authenticate with the current Phala CLI:
