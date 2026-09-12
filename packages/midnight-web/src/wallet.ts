@@ -55,9 +55,14 @@ export function resilientConnectedApi(initial: InitialAPI, networkId: string, fi
 async function connectWithRetry(initial: InitialAPI, networkId: string, attempts = 3): Promise<ConnectedAPI> {
   let lastError: unknown;
   for (let i = 0; i < attempts; i += 1) {
+    const started = Date.now();
+    console.info(`[blindfold] wallet connect(${networkId}) attempt ${i + 1}/${attempts}…`);
     try {
-      return await initial.connect(networkId);
+      const api = await initial.connect(networkId);
+      console.info(`[blindfold] wallet connected in ${Date.now() - started} ms`);
+      return api;
     } catch (e) {
+      console.warn(`[blindfold] wallet connect failed after ${Date.now() - started} ms:`, e);
       if (!isProxyShutdown(e)) throw e;
       lastError = e;
       await new Promise((r) => setTimeout(r, 500));
