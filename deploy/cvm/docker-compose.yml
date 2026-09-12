@@ -3,7 +3,7 @@ services:
     # The image digest and the contract address are written here literally, not read from the env file:
     # dstack measures the compose file into RTMR3, so pinning RTMR3 then pins exactly this image and
     # this contract. Change either, redeploy, and re-pin.
-    image: ghcr.io/moyedx3/blindfold-indexer@sha256:693f1723bae227cbe69b6020c52ca5f8f3ca7b2f2d7044244fdcad35882ef33c
+    image: ghcr.io/moyedx3/blindfold-indexer@sha256:3ce11be29d4f89e66bb1aa8db1c7f71d46c2cdff0665886eac9949df645d4a2f
     restart: unless-stopped
     ports:
       - "8080:8080"
