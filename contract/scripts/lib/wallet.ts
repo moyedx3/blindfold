@@ -98,7 +98,11 @@ export async function createWallet(opts: CreateWalletOptions): Promise<WalletCon
   const dustSecretKey = ledger.DustSecretKey.fromSeed(keys[Roles.Dust]);
   const unshieldedKeystore = createKeystore(keys[Roles.NightExternal], networkId);
 
-  const saved: PersistedWalletState = opts.restore === false
+  // The local devnet has no persistent volume: every `docker compose up` starts a
+  // new chain from genesis, and a wallet state saved against an older devnet instance
+  // makes the SDK wait forever for blocks that will never come ("syncing wallet…").
+  // Syncing from seed takes seconds there, so never restore on undeployed.
+  const saved: PersistedWalletState = opts.restore === false || opts.network === 'undeployed'
     ? {}
     : loadWalletState(opts.network, { cwd: opts.cwd });
 
@@ -174,6 +178,8 @@ export async function persistWalletState(
   ctx: WalletContext,
   cwd?: string,
 ): Promise<void> {
+  // See createWallet: saved state is never restored on the local devnet.
+  if (network === 'undeployed') return;
   const next: PersistedWalletState = {};
 
   for (const kind of CHILD_KINDS) {

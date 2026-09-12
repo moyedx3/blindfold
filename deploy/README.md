@@ -23,7 +23,7 @@ npm run qa:demo
 Start a clean, seeded stack:
 
 ```bash
-npm run devnet:reset       # optional: destroys only the local Blindfold devnet volumes
+npm run devnet:down        # optional: stop a previous devnet; the local chain restarts from genesis
 npm run demo:local
 ```
 
@@ -82,8 +82,8 @@ blob, and seals the key to the current local provisioning key. It refuses real T
 
 ```bash
 npm run demo:stop                # validates the recorded process before stopping it
-npm run devnet:down               # preserves chain volumes
-npm run devnet:reset              # removes local chain volumes; the contract must be redeployed
+npm run devnet:down               # removes the containers; the local chain has no volume, so it restarts from genesis
+npm run devnet:reset              # same, plus any compose-managed volumes; the contract must be redeployed either way
 ```
 
 ## Preprod contract
