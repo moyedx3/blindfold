@@ -23,12 +23,13 @@ describe('withPostBlockUpdate', () => {
   });
 });
 
-import { chooseProofServer } from '../src/providers';
-describe('chooseProofServer', () => {
-  it('prefers the app override, then the wallet prover, then the fallback', () => {
-    expect(chooseProofServer('https://lace-prover.example', { proofServerUrl: 'http://127.0.0.1:6300' })).toBe('http://127.0.0.1:6300');
-    expect(chooseProofServer('https://lace-prover.example', {})).toBe('https://lace-prover.example');
-    expect(chooseProofServer(undefined, { proofServerFallback: 'http://localhost:6300' })).toBe('http://localhost:6300');
-    expect(chooseProofServer(undefined, { proofServerUrl: '' })).toBe('http://localhost:6300');
+import { chooseProving } from '../src/providers';
+describe('chooseProving', () => {
+  it('app override wins, then wallet-delegated proving, then the wallet prover, then the fallback', () => {
+    expect(chooseProving({ hasWalletProving: true, proverServerUri: 'https://lace-prover.example' }, { proofServerUrl: 'http://127.0.0.1:6300' })).toEqual({ kind: 'http', url: 'http://127.0.0.1:6300' });
+    expect(chooseProving({ hasWalletProving: true, proverServerUri: 'https://lace-prover.example' }, {})).toEqual({ kind: 'wallet' });
+    expect(chooseProving({ hasWalletProving: false, proverServerUri: 'https://lace-prover.example' }, {})).toEqual({ kind: 'http', url: 'https://lace-prover.example' });
+    expect(chooseProving({ hasWalletProving: false }, { proofServerFallback: 'http://localhost:6300' })).toEqual({ kind: 'http', url: 'http://localhost:6300' });
+    expect(chooseProving({ hasWalletProving: false }, { proofServerUrl: '' })).toEqual({ kind: 'http', url: 'http://localhost:6300' });
   });
 });
