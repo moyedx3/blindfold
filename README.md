@@ -17,11 +17,11 @@ from the service operator.
 
 ## Status
 
-As of 2026-09-11, commit `f060804e8b06024dfbbe14708a38de1b873efdc7` (on
-`fix/creator-recovery`, including Lanes A/B/C/D) has passed CI, local Midnight devnet deployment,
-six real-chain contract tests, and the indexer purchase-to-key-delivery E2E test. The local services and
-seeded demo drop were restored after a shutdown. These results do not establish public-network or real-TEE
-readiness, and do not mean this branch has been merged into `main`.
+As of 2026-09-12, `main` contains the contract, the TEE indexer, the shared wallet package, the buyer app,
+the creator app, the deployment tooling, and CI. At the merge the suite passed locally: 133 unit tests, both
+fake-wallet browser smokes, local Midnight devnet deployment, six real-chain contract tests, the indexer
+purchase-to-key-delivery E2E test, and an indexer restart followed by re-provisioning from the recovery
+bundle. These results do not establish public-network or real-TEE readiness.
 
 A complete creator-to-buyer Lace run, public Preprod deployment, Phala CVM verification, and mainnet
 readiness checks remain TODO. See the [deployment verification record and TODOs](docs/deployment-verification-2026-09-11.md).
