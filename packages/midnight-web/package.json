@@ -3,7 +3,15 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/index.ts", "./polyfills": "./src/polyfills.ts", "./crypto-shim": "./src/crypto-shim.ts" },
+  "exports": {
+    ".": "./src/index.ts",
+    "./wallet": "./src/wallet.ts",
+    "./fake": "./src/fake.ts",
+    "./contract": "./src/contract.ts",
+    "./providers": "./src/providers.ts",
+    "./polyfills": "./src/polyfills.ts",
+    "./crypto-shim": "./src/crypto-shim.ts"
+  },
   "scripts": { "test": "vitest run", "build": "tsc --noEmit" },
   "dependencies": {
     "@blindfold/contract": "*",

@@ -24,6 +24,10 @@ spike/web/src/contract/compiled/
 contract/build/
 # buyer app's copy of the compiled contract artifacts (regenerate with `node buyer/scripts/copy-artifacts.mjs`)
 buyer/public/contract/
+# creator app's copy of the compiled contract artifacts (regenerate at dev/build time)
+creator/public/contract/
+creator/playwright-report/
+creator/test-results/
 # Playwright run artifacts
 buyer/test-results/
 buyer/playwright-report/
