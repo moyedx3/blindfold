@@ -27,11 +27,10 @@ purchase-to-key-delivery E2E test, and an indexer restart followed by re-provisi
 bundle. Later the same day the contract was deployed to Preprod and the indexer went live in a Phala
 CVM: a genuine TDX quote verifies as `UpToDate`, its `report_data` is bound to the provisioning key, and
 `npm run smoke:live` passes against the values in `deploy/networks.json`. A complete creator-to-buyer run
-with real Lace wallets on Preprod is still to be done. Since that Preprod deployment, `purchase` was changed
-to require the contract's own bNIGHT instead of shielded NIGHT (public Midnight networks have none); the
-bNIGHT contract's redeploy to Preprod and CVM re-pin is Lane E Task 7, still pending, so until it lands the
-Preprod/CVM values recorded above and in `deploy/networks.json` describe the previous, pre-bNIGHT contract.
-The team's live checklist of what is done, verified, and still open is [`docs/status.md`](docs/status.md).
+with real Lace wallets on Preprod is still to be done. Later that day `purchase` was changed to require the
+contract's own bNIGHT instead of shielded NIGHT (public Midnight networks have none); the bNIGHT contract was
+redeployed to Preprod, the CVM was updated to the rebuilt image and re-pinned, and `smoke:live` passed again
+against the values now in `deploy/networks.json`. The team's live checklist of what is done, verified, and still open is [`docs/status.md`](docs/status.md).
 
 A complete creator-to-buyer Lace run on Preprod, the demo video, and mainnet readiness checks remain
 TODO. See the [deployment verification record and TODOs](docs/deployment-verification-2026-09-11.md).

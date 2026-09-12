@@ -73,8 +73,17 @@ local devnet, where the dev genesis seeds shielded native coins. It cannot work 
 Nothing in this session ran against real Lace wallets: the devnet runs above use the headless wallet SDK
 (`createWallet`/`GENESIS_SEED` from `contract/scripts/lib/wallet.ts` and `network.ts`, the same helper the
 flow test and e2e test use), not a browser wallet, so top-up, purchase, and cash-out have not been exercised
-through Lace's DApp connector. The Preprod contract recorded in `deploy/networks.json` (and referenced in
-`README.md`'s status paragraph and `docs/status.md`) is still the pre-bNIGHT contract, deployed before this
-lane's change to `purchase`'s payment color; it does not accept bNIGHT and cannot be used to demo this
-feature. Redeploying the bNIGHT contract to Preprod and re-pinning the CVM is Lane E Task 7 (tracked in
-`docs/status.md` under `E-1`), which has not run yet.
+through Lace's DApp connector.
+
+## Preprod redeploy (Task 7, 2026-09-12, later the same day)
+
+- Indexer image rebuilt from this branch by the `release-image` workflow (tag 0.2.0, run 34697267055):
+  `ghcr.io/moyedx3/blindfold-indexer@sha256:db48405f1d8540125c87ad3e0609ccf47f6d3ca64cbd56675277fb775523d4bb`.
+- bNIGHT contract deployed to Preprod: `02170eebb6cf0da25ff32f3ac7ec31b6a11fd866d148ffc797b2895c671eaab2`
+  (`npm run ledger` read through the public indexer: no drops, purchaseCount 0). The previous contract
+  `34e1bdbd…5d18` is abandoned.
+- The existing CVM was updated to the new digest and contract (82 s). `npm run attest:inspect`: quote
+  `UpToDate`, `report_data` bound to the provisioning key, RTMR3 `c99c9a18…1541` (changed with the image, as
+  expected); the provisioning public key did not change (same app id). `deploy/networks.json` re-pinned;
+  `npm run smoke:live` passed against it.
+- Still not done: a real Lace top-up, purchase, and cash-out against this contract (status board E-2).

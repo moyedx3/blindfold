@@ -100,9 +100,8 @@ Preprod와 메인넷에는 shielded NIGHT가 없다(`docs/superpowers/specs/2026
 - [x] Task 5. 인덱서 devnet e2e가 `wrap` 후 구매하도록 수정(`indexer/test/e2e.devnet.test.ts`, 2 passed), 로컬
       데모(`npm run demo:local`) 재확인, `contract/test/compile.test.ts`에 wrap/unwrap 아티팩트 추가, 문서
       갱신(이 파일 포함) — 2026-09-12 · 증거: `docs/deployment-verification-2026-09-12-bnight.md`.
-- [ ] Task 6. 전체 브랜치 검증 (`npm test`, 빌드, `qa:secrets`, e2e 스모크, CI green on `lane-e`).
-- [ ] Task 7. Preprod 재배포와 CVM 재핀 (유지보수자 실행: Phala 로그인, 펀딩된 배포 지갑 필요). 완료 전까지
-      `deploy/networks.json`과 `README.md` 상태 문단의 Preprod 값은 **이전(비-bNIGHT) 컨트랙트**를 가리킨다.
+- [x] Task 6. 전체 브랜치 검증 — 2026-09-12: 단위 142, 빌드 4개, deploy tsc, `qa:secrets`, smoke 3개, 금칙어 검사 0건, 최종 전체 리뷰 후 수정 웨이브까지 통과.
+- [x] Task 7. Preprod 재배포와 CVM 재핀 — 2026-09-12: 이미지 `release-image` 0.2.0 [run 34697267055](https://github.com/moyedx3/blindfold/actions/runs/34697267055) → `ghcr.io/moyedx3/blindfold-indexer@sha256:db48405f1d8540125c87ad3e0609ccf47f6d3ca64cbd56675277fb775523d4bb`; bNIGHT 컨트랙트 Preprod 배포 `02170eebb6cf0da25ff32f3ac7ec31b6a11fd866d148ffc797b2895c671eaab2` (ledger 조회: drops 없음, purchaseCount 0; 캐시된 지갑 상태 덕에 sync 약 90초); 같은 CVM을 새 digest·주소로 갱신(82초); `attest:inspect` UpToDate, RTMR3 `c99c9a18…1541`(이미지가 바뀌어 재핀), provisioning 공개키는 그대로(`349c03a3…`); `deploy/networks.json` 갱신; `smoke:live` 통과. 이전 컨트랙트 `34e1bdbd…5d18`은 폐기. 남은 것은 E-2(실제 Lace 두 지갑 검증).
 
 ### E-2. 공개 환경에서 A 반복 (C, D, E-1/Task 7 다음) — 담당: ___
 
