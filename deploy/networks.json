@@ -8,7 +8,7 @@
     "midnight_indexer_url": "https://indexer.preprod.midnight.network/api/v4/graphql",
     "midnight_indexer_ws_url": "wss://indexer.preprod.midnight.network/api/v4/graphql/ws",
     "indexer_url": "https://94ef50c5719468f34cdb06e000e8f3ee415f0429-8080.dstack-pha-prod5.phala.network",
-    "measurement_rtmr3": "147a17b3353f2b9749312a9397124bec6fca3eed2e95eb8a70e5299e2863a80b6f54e2dff1180a8fec7889a1afb9724e",
-    "image_digest": "sha256:693f1723bae227cbe69b6020c52ca5f8f3ca7b2f2d7044244fdcad35882ef33c"
+    "measurement_rtmr3": "1fd901f6638335bd8835c29eba797d0effd77b1170d64c797d08db2310219a700b5c7809cbc522dd7c65fc3cef4a2c05",
+    "image_digest": "sha256:3ce11be29d4f89e66bb1aa8db1c7f71d46c2cdff0665886eac9949df645d4a2f"
   }
 }
