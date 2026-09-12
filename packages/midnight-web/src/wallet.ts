@@ -23,9 +23,21 @@ export type ConnectedWallet = {
   shieldedAddress: string; coinPublicKey: string; encryptionPublicKey: string;
 };
 
+// Lace tears down the remote proxy returned by connect() when its authorization tab or popup
+// closes ("Remote API with channel 'midnight-wallet' was shutdown: object can no longer be used").
+// The authorization itself sticks, so a second connect() returns a live proxy without prompting.
+const isProxyShutdown = (e: unknown) => /shutdown|no longer be used/i.test(e instanceof Error ? e.message : String(e));
+
 export async function connectWallet(networkId: string, choice: WalletChoice): Promise<ConnectedWallet> {
-  const api = await choice.api.connect(networkId);
-  const cfg = await api.getConfiguration();
+  let api = await choice.api.connect(networkId);
+  let cfg;
+  try {
+    cfg = await api.getConfiguration();
+  } catch (e) {
+    if (!isProxyShutdown(e)) throw e;
+    api = await choice.api.connect(networkId);
+    cfg = await api.getConfiguration();
+  }
   const sh = await api.getShieldedAddresses();
   return {
     name: choice.name, api, networkId: cfg.networkId,

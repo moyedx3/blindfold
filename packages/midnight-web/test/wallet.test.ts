@@ -53,3 +53,24 @@ describe('explainWalletError', () => {
     expect(explainWalletError('boom')).toBe('boom');
   });
 });
+
+describe('connectWallet against a Lace proxy that shuts down after approval', () => {
+  it('reconnects once when the first proxy reports shutdown', async () => {
+    const live = {
+      getConfiguration: async () => ({ networkId: 'preprod', indexerUri: 'http://i', indexerWsUri: 'ws://i' }),
+      getShieldedAddresses: async () => ({ shieldedAddress: 'mn_shield-addr_preprod1x', shieldedCoinPublicKey: '11'.repeat(32), shieldedEncryptionPublicKey: '22'.repeat(32) }),
+    };
+    const dead = { getConfiguration: async () => { throw new Error("Remote API with channel 'midnight-wallet' was shutdown: object can no longer be used."); } };
+    let calls = 0;
+    const choice = { key: 'mnLace', name: 'Lace', apiVersion: '4.0.1', api: { connect: async () => (calls++ === 0 ? dead : live) } } as any;
+    const w = await connectWallet('preprod', choice);
+    expect(calls).toBe(2);
+    expect(w.networkId).toBe('preprod');
+    expect(w.coinPublicKey).toBe('11'.repeat(32));
+  });
+
+  it('does not mask other connect errors', async () => {
+    const choice = { key: 'mnLace', name: 'Lace', apiVersion: '4.0.1', api: { connect: async () => ({ getConfiguration: async () => { throw new Error('user rejected'); } }) } } as any;
+    await expect(connectWallet('preprod', choice)).rejects.toThrow(/user rejected/);
+  });
+});
