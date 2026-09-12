@@ -58,7 +58,7 @@ development servers.
 2. Fund the wallet from the devnet genesis wallet:
 
    ```bash
-   npm run fund -w contract -- <mn_addr…> <mn_shield-addr…> 1000
+   npm run fund -w contract -- <mn_addr…> <mn_shield-addr…> 1000 --network undeployed
    ```
 
 3. Generate tDUST in Lace and wait for a non-zero DUST balance.

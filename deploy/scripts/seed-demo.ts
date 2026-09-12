@@ -89,7 +89,9 @@ async function checkedFetch(url: string, init?: RequestInit): Promise<Response> 
 const opts = parseArgs(process.argv.slice(2));
 const repoRoot = resolve(import.meta.dirname, "..", "..");
 const contractDir = resolve(repoRoot, "contract");
-const { network, config } = resolveNetwork({ cwd: contractDir });
+// Pin the network explicitly: the state file's active network follows the last public-network
+// wallet that was prepared, and this seeder must never touch a public network.
+const { network, config } = resolveNetwork({ cwd: contractDir, argv: ["node", "seed-demo", "--network", "undeployed"] });
 if (network !== "undeployed") {
   throw new Error("seed-demo is local-only; use the creator app for public networks");
 }

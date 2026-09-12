@@ -37,7 +37,9 @@ npm run devnet:up
 bash deploy/scripts/wait-http.sh http://127.0.0.1:6300/health 120
 
 echo "== 3/5 deploy contract"
-npm run deploy -w contract | tee "$temporary_dir/deploy.log"
+# Always name the network: once a public-network wallet has been prepared, the state
+# file's active network is that public network and a bare `npm run deploy` would use it.
+npm run deploy -w contract -- --network undeployed | tee "$temporary_dir/deploy.log"
 contract_address="$(sed -n 's/^CONTRACT_ADDRESS=\([0-9a-fA-F]\{64\}\)$/\1/p' "$temporary_dir/deploy.log" | tail -1)"
 if [[ -z "$contract_address" ]]; then
   echo "deployment did not print a valid CONTRACT_ADDRESS" >&2

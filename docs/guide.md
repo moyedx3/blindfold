@@ -256,7 +256,7 @@ Lace for the local devnet: install the Lace extension (Chrome), create a wallet,
 network **Undeployed**, proof server **Local (http://localhost:6300)**. Fund it from the genesis wallet:
 
 ```bash
-npm run fund -w contract -- <mn_addr…> <mn_shield-addr…> 1000
+npm run fund -w contract -- <mn_addr…> <mn_shield-addr…> 1000 --network undeployed
 ```
 
 then press **Generate tDUST** in Lace and wait a few minutes. Addresses shown as `mn_addr1…` (no network
@@ -274,7 +274,7 @@ npm install && npm run check:runtime-copies          # exactly one onchain-runti
 npm run compile -w contract                          # Compact 0.31.1 -> contract/build/blindfold
 npm test -w indexer                                  # 62 unit tests (devnet/simulator cases skip)
 docker compose -f deploy/devnet/docker-compose.yml up -d --wait
-npm run deploy -w contract                            # prints CONTRACT_ADDRESS=...
+npm run deploy -w contract -- --network undeployed    # prints CONTRACT_ADDRESS=...
 DEVNET=1 npm run test:devnet -w contract              # 6-case contract flow test (~90 s)
 cd indexer && NETWORK=undeployed CONTRACT_ADDRESS=<addr> DEV_SEED_HEX=<64 hex> DATA_DIR=../.local/manual-indexer npm start
 DEVNET=1 CONTRACT_ADDRESS=<addr> npx vitest run test/e2e.devnet.test.ts
