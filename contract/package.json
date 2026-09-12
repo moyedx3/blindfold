@@ -13,7 +13,8 @@
     "fund": "tsx scripts/fund.ts",
     "ledger": "tsx scripts/ledger.ts",
     "test": "vitest run",
-    "test:devnet": "DEVNET=1 vitest run test/flow.test.ts"
+    "test:devnet": "DEVNET=1 vitest run test/flow.test.ts",
+    "wrap": "tsx scripts/wrap.ts"
   },
   "dependencies": {
     "@midnight-ntwrk/compact-runtime": "0.16.0",
@@ -40,5 +41,7 @@
     "typescript": "^5.9.3",
     "vitest": "^4.1.9"
   },
-  "overrides": { "@midnight-ntwrk/onchain-runtime-v3": "3.0.0" }
+  "overrides": {
+    "@midnight-ntwrk/onchain-runtime-v3": "3.0.0"
+  }
 }
