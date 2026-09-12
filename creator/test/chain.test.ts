@@ -35,7 +35,7 @@ describe("creator chain ops", () => {
   });
 
   it("escrowForDrops lists only the given drops", async () => {
-    const client = new FakeBlindfoldClient({ drops: new Map([[1n, 5n], [2n, 5n]]) });
+    const client = new FakeBlindfoldClient({ drops: new Map([[1n, 5n], [2n, 5n]]) }, undefined, { privateBalance: 11n });
     await client.purchase(1n, new Uint8Array(32), 5n);
     await client.purchase(2n, new Uint8Array(32), 6n);
     expect(escrowForDrops(await client.ledger(), [2])).toEqual([{ index: 1n, dropId: 2n, valueStar: 6n }]);

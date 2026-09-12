@@ -3,29 +3,34 @@
 Sell content that unlocks with a private payment, with nobody in the middle able to read it.
 Built on [Midnight](https://midnight.network) for the Midnight Korea Hackathon 2026.
 
-Blindfold combines a Compact contract, shielded NIGHT, browser-side encryption, and an attested TEE:
+Blindfold combines a Compact contract, a private balance (bNIGHT), browser-side encryption, and an
+attested TEE:
 
 1. A creator encrypts content in the browser, registers its price and key commitment on-chain, and seals
    the content key to the TEE only after verifying its attestation.
-2. A buyer pays through the contract with shielded NIGHT and supplies a fresh one-time public key in the
-   same transaction.
+2. A buyer tops up public NIGHT into a private balance in fixed 5/10/50 NIGHT denominations (public
+   Midnight networks have no shielded NIGHT to spend directly), then pays by spending that private balance
+   through the contract and supplying a fresh one-time public key in the same transaction.
 3. The TEE observes the purchase and seals the content key to that one-time key. The buyer opens it and
    decrypts the content locally.
 
-The contract enforces payment; Zswap protects the buyer's payment identity; the TEE keeps the content key
-from the service operator.
+The contract enforces payment; the purchase is a zswap spend of the private balance, so the chain sees a
+drop id and a one-time key, not a wallet — the top-up itself is public. The TEE keeps the content key from
+the service operator.
 
 ## Status
 
 As of 2026-09-12, `main` contains the contract, the TEE indexer, the shared wallet package, the buyer app,
-the creator app, the deployment tooling, and CI. At the merge the suite passed locally: 133 unit tests, both
-fake-wallet browser smokes, local Midnight devnet deployment, six real-chain contract tests, the indexer
+the creator app, the deployment tooling, and CI. At the merge the suite passed locally: 142 unit tests, both
+fake-wallet browser smokes, local Midnight devnet deployment, eleven real-chain contract tests (including bNIGHT wrap, purchase, and unwrap), the indexer
 purchase-to-key-delivery E2E test, and an indexer restart followed by re-provisioning from the recovery
 bundle. Later the same day the contract was deployed to Preprod and the indexer went live in a Phala
 CVM: a genuine TDX quote verifies as `UpToDate`, its `report_data` is bound to the provisioning key, and
 `npm run smoke:live` passes against the values in `deploy/networks.json`. A complete creator-to-buyer run
-with real Lace wallets on Preprod is still to be done. The team's live checklist of what is done, verified,
-and still open is [`docs/status.md`](docs/status.md).
+with real Lace wallets on Preprod is still to be done. Later that day `purchase` was changed to require the
+contract's own bNIGHT instead of shielded NIGHT (public Midnight networks have none); the bNIGHT contract was
+redeployed to Preprod, the CVM was updated to the rebuilt image and re-pinned, and `smoke:live` passed again
+against the values now in `deploy/networks.json`. The team's live checklist of what is done, verified, and still open is [`docs/status.md`](docs/status.md).
 
 A complete creator-to-buyer Lace run on Preprod, the demo video, and mainnet readiness checks remain
 TODO. See the [deployment verification record and TODOs](docs/deployment-verification-2026-09-11.md).
@@ -34,12 +39,15 @@ No placeholder in `deploy/networks.json` should be presented as a live deploymen
 ## How Midnight is used
 
 - [`contract/src/blindfold.compact`](contract/src/blindfold.compact) implements `createDrop`, `purchase`,
-  and `withdraw`. `purchase` receives shielded NIGHT, enforces the price, escrows the coin, and records the
-  buyer's disclosed one-time encryption key atomically. `withdraw` returns escrow to the creator after a
-  secret-witness authorization check.
+  `withdraw`, `wrap`, and `unwrap`. `purchase` receives bNIGHT (the contract's own shielded token), enforces
+  the price, escrows the coin, and records the buyer's disclosed one-time encryption key atomically.
+  `withdraw` returns escrow to the creator after a secret-witness authorization check.
 - The buyer and creator connect through DApp Connector v4 and Midnight.js providers. Lace is the verified
   demo wallet; another compatible connector can be discovered through the same interface but must be
   tested before it is claimed as supported.
+- Public Midnight networks have no shielded NIGHT to spend directly, so `wrap` mints bNIGHT against public
+  NIGHT the caller sends, in fixed 5/10/50 NIGHT denominations. `unwrap` converts bNIGHT the contract holds
+  back into public NIGHT for the caller.
 - The indexer reads the contract's public ledger from Midnight indexer GraphQL. What appears publicly is
   the contract call, drop ID, one-time key, paid value, and normal Zswap/DUST transaction data—not a wallet
   address or wallet public key.

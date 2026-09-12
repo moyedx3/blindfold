@@ -10,7 +10,7 @@ import sodium from 'libsodium-wrappers';
 import { findDeployedContract } from '@midnight-ntwrk/midnight-js-contracts';
 import { resolveNetwork, GENESIS_SEED } from '../../contract/scripts/lib/network';
 import { createWallet, type WalletContext } from '../../contract/scripts/lib/wallet';
-import { buildProviders, loadCompiledContract, nightCoin } from '../../contract/scripts/lib/providers';
+import { buildProviders, loadCompiledContract, paymentCoin } from '../../contract/scripts/lib/providers';
 
 import { buildServer } from '../src/server';
 import { Catalog } from '../src/catalog';
@@ -126,7 +126,8 @@ describe.skipIf(!process.env.DEVNET || !process.env.CONTRACT_ADDRESS)('indexer e
           initialPrivateState: { secret: randomBytes(32) },
         })) as any;
         const ePub = sodium.crypto_box_keypair();
-        await buyer.callTx.purchase(dropId, ePub.publicKey, nightCoin(PRICE));
+        await buyer.callTx.wrap(5_000_000n);
+        await buyer.callTx.purchase(dropId, ePub.publicKey, paymentCoin(contractAddress, PRICE));
 
         // Step 6: the watcher dispatches once the indexer catches up with the node.
         let dispatchedThisTick = 0;

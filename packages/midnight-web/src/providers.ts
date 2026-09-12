@@ -8,7 +8,7 @@ import type { ConnectedWallet } from './wallet';
 const toHex = (b: Uint8Array) => Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('');
 const fromHex = (h: string) => new Uint8Array((h.replace(/^0x/, '').match(/.{1,2}/g) ?? []).map((x) => parseInt(x, 16)));
 
-export type BlindfoldProviders = any; // MidnightProviders<'createDrop' | 'purchase' | 'withdraw'>
+export type BlindfoldProviders = any; // MidnightProviders<'createDrop' | 'purchase' | 'withdraw' | 'wrap' | 'unwrap'>
 
 export function withPostBlockUpdate<P extends { queryZSwapAndContractState: (...a: any[]) => Promise<any> }>(raw: P): P {
   return {
@@ -23,7 +23,7 @@ export function withPostBlockUpdate<P extends { queryZSwapAndContractState: (...
 }
 
 export async function buildProviders(w: ConnectedWallet, opts: { zkAssetsUrl: string; storeName: string; proofServerFallback?: string }): Promise<BlindfoldProviders> {
-  const zkConfigProvider = new FetchZkConfigProvider<'createDrop' | 'purchase' | 'withdraw'>(opts.zkAssetsUrl, fetch.bind(globalThis));
+  const zkConfigProvider = new FetchZkConfigProvider<'createDrop' | 'purchase' | 'withdraw' | 'wrap' | 'unwrap'>(opts.zkAssetsUrl, fetch.bind(globalThis));
   const proofServer = w.proverServerUri ?? opts.proofServerFallback ?? 'http://localhost:6300';
   const proofProvider = httpClientProofProvider(proofServer, zkConfigProvider);
   const walletProvider = {

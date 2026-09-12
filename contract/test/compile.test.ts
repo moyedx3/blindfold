@@ -6,9 +6,9 @@ import { resolve } from 'node:path';
 const root = resolve(import.meta.dirname, '..');
 
 describe('contract compiles', () => {
-  it('produces artifacts for createDrop, purchase, withdraw', () => {
+  it('produces artifacts for createDrop, purchase, withdraw, wrap, unwrap', () => {
     execFileSync('bash', ['scripts/compile.sh'], { cwd: root, stdio: 'inherit' });
-    for (const c of ['createDrop', 'purchase', 'withdraw']) {
+    for (const c of ['createDrop', 'purchase', 'withdraw', 'wrap', 'unwrap']) {
       expect(existsSync(resolve(root, `build/blindfold/keys/${c}.prover`))).toBe(true);
       expect(existsSync(resolve(root, `build/blindfold/zkir/${c}.zkir`))).toBe(true);
     }

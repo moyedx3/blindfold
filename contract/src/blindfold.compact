@@ -1,21 +1,26 @@
-// Blindfold payment gate: a buyer pays shielded NIGHT and registers a one-time key in one
-// transaction; the creator registers drops and withdraws escrowed coins.
+// Blindfold payment gate. Public NIGHT enters through `wrap` and becomes bNIGHT, a shielded token
+// this contract mints; a buyer pays bNIGHT and registers a one-time key in one transaction; the
+// creator registers drops, withdraws escrowed bNIGHT, and cashes it out through `unwrap`.
 pragma language_version 0.23;
 import CompactStandardLibrary;
 
-export ledger drops: Map<Uint<64>, Uint<128>>;               // dropId -> price in STAR
+export ledger drops: Map<Uint<64>, Uint<128>>;               // dropId -> price in STAR (1 bNIGHT = 1 NIGHT)
 export ledger dropOwner: Map<Uint<64>, Bytes<32>>;           // dropId -> creator dapp pubkey
 export ledger kCommit: Map<Uint<64>, Bytes<32>>;             // dropId -> sha256(K_drop || h_content), set by the creator app
 export ledger purchaseCount: Counter;
 export ledger purchases: Map<Uint<64>, Bytes<32>>;           // index -> buyer one-time X25519 pubkey
 export ledger purchaseDrop: Map<Uint<64>, Uint<64>>;         // index -> dropId
 export ledger escrow: Map<Uint<64>, QualifiedShieldedCoinInfo>; // index -> contract-held coin
+export ledger wrapNonce: Bytes<32>;                          // evolves on every mint; keeps coin nonces unique
 
 witness creatorSecret(): Bytes<32>;
 
 circuit creatorPk(sk: Bytes<32>): Bytes<32> {
   return persistentHash<Vector<2, Bytes<32>>>([pad(32, "blindfold:creator:"), sk]);
 }
+
+circuit paymentDomain(): Bytes<32> { return pad(32, "blindfold:bNIGHT"); }
+circuit paymentToken(): Bytes<32> { return tokenType(paymentDomain(), kernel.self()); }
 
 export circuit createDrop(dropId: Uint<64>, price: Uint<128>, commit: Bytes<32>): [] {
   assert(!drops.member(disclose(dropId)), "drop already exists");
@@ -25,9 +30,20 @@ export circuit createDrop(dropId: Uint<64>, price: Uint<128>, commit: Bytes<32>)
   dropOwner.insert(disclose(dropId), disclose(creatorPk(creatorSecret())));
 }
 
+// Public NIGHT in, the same amount of bNIGHT out to the caller's shielded key. Fixed denominations
+// keep top-up amounts from fingerprinting a buyer.
+export circuit wrap(amount: Uint<64>): [] {
+  const a = disclose(amount);
+  assert(a == 5000000 || a == 10000000 || a == 50000000, "top up 5, 10, or 50 NIGHT");
+  receiveUnshielded(nativeToken(), a as Uint<128>);
+  const nonce = persistentHash<Vector<2, Bytes<32>>>([wrapNonce, pad(32, "blindfold:wrap:")]);
+  wrapNonce = nonce;
+  mintShieldedToken(paymentDomain(), a, nonce, left<ZswapCoinPublicKey, ContractAddress>(ownPublicKey()));
+}
+
 export circuit purchase(dropId: Uint<64>, ePub: Bytes<32>, coin: ShieldedCoinInfo): [] {
   assert(drops.member(disclose(dropId)), "unknown drop");
-  assert(coin.color == nativeToken(), "must pay in NIGHT");
+  assert(coin.color == paymentToken(), "must pay in bNIGHT");
   assert(coin.value >= drops.lookup(disclose(dropId)), "underpaid");
   receiveShielded(disclose(coin));
   const idx = purchaseCount.read();
@@ -44,4 +60,13 @@ export circuit withdraw(idx: Uint<64>): [] {
   const coin = escrow.lookup(disclose(idx));
   sendShielded(coin, left<ZswapCoinPublicKey, ContractAddress>(ownPublicKey()), coin.value);
   escrow.remove(disclose(idx));
+}
+
+// bNIGHT in (kept by the contract forever: there is no burn), the same amount of public NIGHT out.
+export circuit unwrap(coin: ShieldedCoinInfo, to: UserAddress): [] {
+  assert(coin.color == paymentToken(), "not bNIGHT");
+  // The cashed-out amount is public, so bind the disclosed coin once and pay out of that.
+  const c = disclose(coin);
+  receiveShielded(c);
+  sendUnshielded(nativeToken(), c.value, right<ContractAddress, UserAddress>(disclose(to)));
 }

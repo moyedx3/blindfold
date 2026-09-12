@@ -4,11 +4,11 @@
     "indexer_url": "http://127.0.0.1:8080"
   },
   "preprod": {
-    "contract_address": "34e1bdbdb2602d457559d6229730d5486da870216da9478e322bbefea4785d18",
+    "contract_address": "02170eebb6cf0da25ff32f3ac7ec31b6a11fd866d148ffc797b2895c671eaab2",
     "midnight_indexer_url": "https://indexer.preprod.midnight.network/api/v4/graphql",
     "midnight_indexer_ws_url": "wss://indexer.preprod.midnight.network/api/v4/graphql/ws",
     "indexer_url": "https://94ef50c5719468f34cdb06e000e8f3ee415f0429-8080.dstack-pha-prod5.phala.network",
-    "measurement_rtmr3": "3509154d64f67189f9dd12ede1c28662efd69080bfb8215874019f2e54bb8dd08d0072bc40be0b66de3769c3980af158",
-    "image_digest": "sha256:2b09efbe6f99e8eb89b1ee31da5416ff980c14432bf1ebbc56b830fa5ab4d4e3"
+    "measurement_rtmr3": "c99c9a1816ef86d1de6b613174b4303a6e9e94a7c189ab149b30f64baf2c34cd108c6e900f3ccd201049f84742591541",
+    "image_digest": "sha256:db48405f1d8540125c87ad3e0609ccf47f6d3ca64cbd56675277fb775523d4bb"
   }
 }

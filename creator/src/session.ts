@@ -26,7 +26,7 @@ export async function openSession(indexerUrl: string, choice: WalletChoice): Pro
   if (FAKE) {
     return {
       wallet: fakeConnectedWallet(),
-      client: new FakeBlindfoldClient(),
+      client: new FakeBlindfoldClient({}, undefined, { privateBalance: 3_000_000n }),
       contractAddress: contract.contract_address,
       network: contract.network,
     };
@@ -52,6 +52,8 @@ export async function openSession(indexerUrl: string, choice: WalletChoice): Pro
     secret,
     `blindfold-creator-${contract.contract_address.slice(0, 8)}`,
     contract.network,
+    `${window.location.origin}/contract/blindfold`,
+    wallet,
   );
   return { wallet, client, contractAddress: contract.contract_address, network: contract.network };
 }

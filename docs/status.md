@@ -8,21 +8,22 @@
 ## 한 줄 답
 
 **로컬 데모는 완성·검증됐고, 2026-09-12에 Preprod 컨트랙트와 Phala CVM(실제 TDX)까지 올라가 `smoke:live`가 통과했다.**
-남은 것은 실제 Lace 두 지갑으로 공개 환경에서 등록 → 구매 → withdraw 한 바퀴(E), 그리고 영상·제출물(F)이다. 섹션 3을 순서대로 하면 된다.
+남은 것은 bNIGHT 브랜치(`lane-e`) 마무리(E-1), 실제 Lace 두 지갑으로 공개 환경에서 등록 → 구매 → withdraw 한
+바퀴(E-2), 그리고 영상·제출물(F)이다. 섹션 3을 순서대로 하면 된다.
 
 ## 1. 무엇이 어디까지 됐나
 
 | 영역 | 구현 | 검증됨 (어떻게, 언제) | 미검증 / 한계 |
 |---|---|---|---|
-| Compact 컨트랙트 `contract/` | 완료 | 로컬 devnet 6케이스 flow 테스트: 등록, 중복 거부, 구매·에스크로, 부족 결제 거부, 타인 출금 거부, 크리에이터 출금. 2026-09-12 재확인 | Preprod에 배포한 적 없음 |
+| Compact 컨트랙트 `contract/` | 완료 | 로컬 devnet 11케이스 flow 테스트: 등록, 중복 거부, wrap 금액 검증 거부, wrap 발행, 구매 시 네이티브 코인 거부, 구매·에스크로, 부족 결제 거부, 타인 출금 거부, 크리에이터 출금, unwrap 색상 검증 거부, unwrap 환급. 2026-09-12 재확인 | Preprod에 배포한 적 없음 |
 | TEE 인덱서 `indexer/` | 완료 | 단위 62개, devnet E2E(구매 → 봉인된 키 전달), dstack 시뮬레이터 연동 테스트, Docker 이미지 빌드 | **실제 Phala CVM/TDX에서 실행한 적 없음.** 지금까지 모든 실행은 `quote_hex: "dev"` |
-| 공용 지갑 패키지 `packages/midnight-web/` + 구매자 앱 `buyer/` | 완료 | 단위 14 + 25, fake-wallet Playwright smoke, **실제 Lace로 구매·언락 (2026-09-05, 로컬 devnet, 약 20초)** | 1AM 지갑은 테스트 안 함 |
+| 공용 지갑 패키지 `packages/midnight-web/` + 구매자 앱 `buyer/` | 완료 | 단위 21 + 27, fake-wallet Playwright smoke, **실제 Lace로 구매·언락 (2026-09-05, 로컬 devnet, 약 20초)** | 1AM 지갑은 테스트 안 함 |
 | 크리에이터 앱 `creator/` | 완료 | 단위 31, fake-wallet smoke(enclave 키 교체 후 재-provision 포함), attestation 검증기 단위 fixture(TDX 1.0/1.5 report) | **실제 Lace로 돌려본 적 없음.** 실제 TDX quote로 검증기를 돌려본 적 없음 |
 | 배포 도구 `deploy/` | 완료 | `npm run demo:local`(컴파일 → devnet → 배포 → 인덱서 → drop 등록·provision), 인덱서 재시작 후 `npm run demo:recover`, 8080 점유 시 즉시 실패. 2026-09-12 확인 | Preprod·Phala 런북은 **한 번도 실행 안 됨**. `deploy/networks.json`은 전부 `null` |
 | CI `.github/workflows/ci.yml` | 완료 | main에서 초록: 컴파일, 단위 전체, 빌드 4개, deploy 타입체크, `qa:secrets`, compose config, buyer/creator smoke ([run 34670704713](https://github.com/moyedx3/blindfold/actions/runs/34670704713)) | devnet 테스트는 CI에서 skip (로컬에서만) |
 | 문서 | 완료 | README, guide, demo-script, demo-readiness, 검증 기록 | 데모 영상 없음. 저장소 아직 private |
 
-단위 테스트 합계 133개 (contract 1, indexer 62, midnight-web 14, buyer 25, creator 31).
+단위 테스트 합계 142개 (contract 1, indexer 62, midnight-web 21, buyer 27, creator 31).
 
 ## 2. 검증의 근거
 
@@ -30,7 +31,7 @@
 - 2026-09-10/11: 로컬 devnet 배포·재시작 복구 기록 [`deployment-verification-2026-09-11.md`](deployment-verification-2026-09-11.md).
 - 2026-09-12: Lane C/D + 복구 기능 전체 리뷰 후 main 머지. 리뷰에서 나온 attestation 우회 훅 제거, TDX 1.5 report 지원,
   creator secret 덮어쓰기 방지, `public_logs=false`, devnet 재기동 후 지갑 sync 멈춤 수정이 함께 들어갔다.
-  133 단위, 두 smoke, `demo:local`, contract flow, indexer E2E, 재시작 복구 모두 통과.
+  142 단위, 두 smoke, `demo:local`, contract flow, indexer E2E, 재시작 복구 모두 통과.
 
 ## 3. 남은 일 (이 순서대로)
 
@@ -43,8 +44,11 @@
 - [ ] Lace 프로필 두 개(크리에이터, 구매자), 둘 다 네트워크 **Undeployed**, proof server **Local (http://localhost:6300)**.
 - [ ] `npm run demo:local`로 스택을 올리고, 두 지갑의 주소를 genesis 지갑에서 fund: `npm run fund -w contract -- <mn_addr…> <mn_shield-addr…> 1000 --network undeployed` (Preprod 지갑을 준비한 뒤로는 상태 파일의 기본 네트워크가 preprod라 `--network`를 꼭 붙인다)
 - [ ] 크리에이터 앱 `VITE_INDEXER_URL=http://127.0.0.1:8080 npm run dev -w creator` (5175): dev mode 체크 → 파일 선택 → Encrypt + Register + Provision. 복구 파일이 내려받아지는지, 카탈로그(`/catalog`)에 뜨는지.
-- [ ] 구매자 앱 `VITE_INDEXER_URL=http://127.0.0.1:8080 npm run dev -w buyer` (5173): 구매 → 언락 → 복호화된 파일이 원본과 같은지.
-- [ ] 크리에이터 앱에서 Escrowed purchases → Withdraw 성공.
+- [ ] 구매자 앱 `VITE_INDEXER_URL=http://127.0.0.1:8080 npm run dev -w buyer` (5173): **Top up 5/10/50**(고정
+      단위)로 Private balance를 채우고 → 구매(Private balance 차감, 새 top-up 없이 한 번 승인) → 언락 →
+      복호화된 파일이 원본과 같은지.
+- [ ] 크리에이터 앱에서 Escrowed purchases → Withdraw 성공 → Private balance 패널에서 **Cash out to public
+      NIGHT** → 공개 NIGHT 잔액이 늘어나는지.
 - [ ] `npm run demo:stop` 후 인덱서만 다시 띄우고, 크리에이터 앱 "Restore an existing drop"에 복구 파일을 넣어 등록 tx 없이 재-provision 되는지.
 - [ ] 크리에이터 secret export → 브라우저 저장소 비움 → import → 같은 drop의 withdraw가 되는지. 다른 secret import 시 확인창이 뜨는지.
 - [ ] 결과를 `docs/deployment-verification-<날짜>.md`로 기록.
@@ -82,11 +86,30 @@ DUST가 쌓이는 데 시간이 걸리므로 가장 먼저 시작한다.
 - [ ] **브라우저에서 실전 확인:** 크리에이터 앱을 `VITE_INDEXER_URL=<endpoint> VITE_EXPECTED_MEASUREMENT_HEX=<rtmr3>`로 띄워 실제 quote로 provision이 통과하는지. `creator/src/qvl-verifier.ts`는 아직 실제 quote를 본 적이 없다. 실패하면 이슈로 등록하고 `attest:inspect` 결과와 대조.
 - [ ] 공개 네트워크에 붙었을 때 dev mode 체크박스가 비활성인지.
 
-### E. 공개 환경에서 A 반복 (C, D 다음) — 담당: ___
+### E-1. bNIGHT (Lane E) — 담당: ___
 
-- [ ] 크리에이터: Preprod Lace로 등록·provision (endpoint와 RTMR3는 D의 값).
+Preprod와 메인넷에는 shielded NIGHT가 없다(`docs/superpowers/specs/2026-09-12-lane-e-shielded-payment-token-design.md`
+1절). 그래서 컨트랙트가 공개 NIGHT를 5·10·50 단위로 받아 자체 shielded 토큰(bNIGHT)을 발행하도록(`wrap`) 바꾸고,
+구매는 bNIGHT 지출로, 크리에이터는 `withdraw` 후 `unwrap`으로 공개 NIGHT를 돌려받는다. UI에는 "wrap" 대신
+**Private balance** 하나만 보인다. 브랜치 `lane-e`, 계획: `docs/superpowers/plans/2026-09-12-lane-e-shielded-payment-token.md`.
+
+- [x] Task 1. 컨트랙트 `wrap`/`unwrap` 서킷과 devnet flow 테스트 (`contract/test/flow.test.ts`, 11 passed).
+- [x] Task 2. 공용 클라이언트 `packages/midnight-web`에 wrap/unwrap/privateBalance/bNIGHT color.
+- [x] Task 3. 구매자 앱: Private balance 패널(Top up 5/10/50), Buy는 private balance 확보 후에만.
+- [x] Task 4. 크리에이터 앱: Private balance 패널, Cash out to public NIGHT.
+- [x] Task 5. 인덱서 devnet e2e가 `wrap` 후 구매하도록 수정(`indexer/test/e2e.devnet.test.ts`, 2 passed), 로컬
+      데모(`npm run demo:local`) 재확인, `contract/test/compile.test.ts`에 wrap/unwrap 아티팩트 추가, 문서
+      갱신(이 파일 포함) — 2026-09-12 · 증거: `docs/deployment-verification-2026-09-12-bnight.md`.
+- [x] Task 6. 전체 브랜치 검증 — 2026-09-12: 단위 142, 빌드 4개, deploy tsc, `qa:secrets`, smoke 3개, 금칙어 검사 0건, 최종 전체 리뷰 후 수정 웨이브까지 통과.
+- [x] Task 7. Preprod 재배포와 CVM 재핀 — 2026-09-12: 이미지 `release-image` 0.2.0 [run 34697267055](https://github.com/moyedx3/blindfold/actions/runs/34697267055) → `ghcr.io/moyedx3/blindfold-indexer@sha256:db48405f1d8540125c87ad3e0609ccf47f6d3ca64cbd56675277fb775523d4bb`; bNIGHT 컨트랙트 Preprod 배포 `02170eebb6cf0da25ff32f3ac7ec31b6a11fd866d148ffc797b2895c671eaab2` (ledger 조회: drops 없음, purchaseCount 0; 캐시된 지갑 상태 덕에 sync 약 90초); 같은 CVM을 새 digest·주소로 갱신(82초); `attest:inspect` UpToDate, RTMR3 `c99c9a18…1541`(이미지가 바뀌어 재핀), provisioning 공개키는 그대로(`349c03a3…`); `deploy/networks.json` 갱신; `smoke:live` 통과. 이전 컨트랙트 `34e1bdbd…5d18`은 폐기. 남은 것은 E-2(실제 Lace 두 지갑 검증).
+
+### E-2. 공개 환경에서 A 반복 (C, D, E-1/Task 7 다음) — 담당: ___
+
+- [ ] 크리에이터: Preprod Lace로 등록·provision (endpoint와 RTMR3는 Task 7 재배포 이후 값).
+- [ ] 구매자: Preprod Lace로 Top up(5/10/50 NIGHT 중 하나로 Private balance 채우기).
 - [ ] 구매자: Preprod Lace로 구매·언락·복호화. explorer에서 지갑 주소가 컨트랙트 인자에 없는 것 확인.
 - [ ] 크리에이터 withdraw.
+- [ ] 크리에이터 Cash out to public NIGHT, 공개 NIGHT 잔액이 늘어나는지 확인.
 - [ ] 기록을 남기고, `README.md` 상태 문단을 갱신.
 
 ### F. 제출물 (9/26까지) — 담당: ___

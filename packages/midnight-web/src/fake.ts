@@ -4,15 +4,31 @@ import type { ConnectedWallet } from './wallet';
 export class FakeBlindfoldClient implements BlindfoldClient {
   readonly calls: Array<Record<string, unknown>> = [];
   private readonly view: LedgerView;
-  constructor(seed: Partial<LedgerView> = {}, private readonly onPurchase?: (index: bigint, dropId: bigint, ePub: Uint8Array) => Promise<void> | void) {
+  private balance: bigint;
+  constructor(seed: Partial<LedgerView> = {}, private readonly onPurchase?: (index: bigint, dropId: bigint, ePub: Uint8Array) => Promise<void> | void, options: { privateBalance?: bigint } = {}) {
     this.view = { drops: new Map(), dropOwner: new Map(), kCommit: new Map(), purchaseCount: 0n, purchases: new Map(), purchaseDrop: new Map(), escrow: new Map(), ...seed };
+    this.balance = options.privateBalance ?? 0n;
   }
   private tx(): TxRef { const n = Number(this.view.purchaseCount); return { txId: `fake-${n}-${Date.now()}`, blockHeight: n }; }
+  paymentTokenColor(): string { return 'b1'.repeat(32); }
+  async privateBalance(): Promise<bigint> { return this.balance; }
+  async wrap(amountStar: bigint): Promise<TxRef> {
+    this.calls.push({ method: 'wrap', amountStar });
+    if (![5_000_000n, 10_000_000n, 50_000_000n].includes(amountStar)) throw new Error('top up 5, 10, or 50 NIGHT');
+    this.balance += amountStar; return this.tx();
+  }
+  async unwrap(valueStar: bigint, to: string): Promise<TxRef> {
+    this.calls.push({ method: 'unwrap', valueStar, to });
+    if (valueStar > this.balance) throw new Error('insufficient private balance');
+    this.balance -= valueStar; return this.tx();
+  }
   async purchase(dropId: bigint, ePub: Uint8Array, price: bigint): Promise<TxRef> {
     this.calls.push({ method: 'purchase', dropId, price });
     const p = this.view.drops.get(dropId);
     if (p === undefined) throw new Error('unknown drop');
     if (price < p) throw new Error('underpaid');
+    if (price > this.balance) throw new Error('insufficient private balance');
+    this.balance -= price;
     const i = this.view.purchaseCount;
     this.view.purchases.set(i, ePub); this.view.purchaseDrop.set(i, dropId); this.view.escrow.set(i, { value: price, mt_index: i });
     this.view.purchaseCount = i + 1n;
@@ -27,8 +43,9 @@ export class FakeBlindfoldClient implements BlindfoldClient {
   }
   async withdraw(idx: bigint): Promise<TxRef> {
     this.calls.push({ method: 'withdraw', idx });
-    if (!this.view.escrow.has(idx)) throw new Error('nothing escrowed');
-    this.view.escrow.delete(idx); return this.tx();
+    const coin = this.view.escrow.get(idx);
+    if (!coin) throw new Error('nothing escrowed');
+    this.view.escrow.delete(idx); this.balance += coin.value; return this.tx();
   }
   async ledger(): Promise<LedgerView> {
     return {
@@ -44,6 +61,7 @@ export function fakeConnectedWallet(): ConnectedWallet {
     getShieldedBalances: async () => ({ ['0'.repeat(64)]: 1_000_000_000n }),
     getUnshieldedBalances: async () => ({ ['0'.repeat(64)]: 1_000_000_000n }),
     getDustBalance: async () => ({ balance: 10n ** 18n, cap: 10n ** 19n }),
+    getUnshieldedAddress: async () => ({ unshieldedAddress: 'mn_addr_undeployed1fake' }),
   };
   return { name: 'fake', api, networkId: 'undeployed', indexerUri: 'http://fake', indexerWsUri: 'ws://fake', shieldedAddress: 'mn_shield-addr_undeployed1fake', coinPublicKey: '00'.repeat(32), encryptionPublicKey: '00'.repeat(32) };
 }
@@ -62,6 +80,7 @@ export function installFakeConnector(win: { midnight?: Record<string, unknown> }
     getShieldedBalances: async () => ({ ['0'.repeat(64)]: 1_000_000_000n }),
     getUnshieldedBalances: async () => ({ ['0'.repeat(64)]: 1_000_000_000n }),
     getDustBalance: async () => ({ balance: 10n ** 18n, cap: 10n ** 19n }),
+    getUnshieldedAddress: async () => ({ unshieldedAddress: 'mn_addr_undeployed1fake' }),
     getConnectionStatus: async () => ({ status: 'connected' }),
   };
   win.midnight = {
