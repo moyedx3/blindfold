@@ -150,8 +150,13 @@ into the bundles. Deploy it as a static site (the Vercel build image has no Comp
 
 ```bash
 npm run site:build
-cd site && npx vercel deploy --prod --yes      # project "blindfold"; first time: npx vercel link --yes --project blindfold
+npm run site:deploy      # copies site/ outside the git checkout, then `vercel deploy --prod`
+# first time only: cd site && npx vercel link --yes --project blindfold
 ```
+
+Deploy from the copy, not from inside the checkout: the Vercel CLI attaches the local git commit author
+to a deployment made inside a repository, and Vercel blocks it when that author is not a team member
+(the deployment sits at "UNKNOWN" in `vercel ls`; the API says "commit author doesn't have permission").
 
 Production: <https://blindfold-psi.vercel.app/> and <https://blindfold-psi.vercel.app/creator/>. After any CVM
 re-pin, rebuild and redeploy the site: the RTMR3 is compiled into the creator bundle.

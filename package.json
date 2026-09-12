@@ -23,7 +23,8 @@
     "qa:demo": "bash deploy/scripts/qa-demo.sh",
     "smoke:live": "npx tsx deploy/scripts/smoke-live.ts",
     "attest:inspect": "npx tsx deploy/scripts/inspect-attestation.ts",
-    "site:build": "node deploy/scripts/build-site.mjs"
+    "site:build": "node deploy/scripts/build-site.mjs",
+    "site:deploy": "bash deploy/scripts/deploy-site.sh"
   },
   "engines": {
     "node": ">=22"
