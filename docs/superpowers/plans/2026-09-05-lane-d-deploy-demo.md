@@ -10,6 +10,15 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-05-blindfold-design.md` (sections 10, 12, 13)
 
+> **Implementation note (2026-09-08):** Lane D is implemented on `lane-d`, based on `origin/lane-c`, and
+> locally verified. The implementation intentionally corrects several stale snippets below: creator ports
+> are 5175/5176; ephemeral local addresses go to gitignored `.local/networks.json`; creator recovery material
+> is mode-0600 instead of printed; clean-wallet deployment registers and waits for DUST; Phala uses the
+> current `phala login` / `phala deploy -n ... -c ... -e .env -t tdx.small --wait` interface; images are
+> pinned by digest; and live smoke verifies QVL status, RTMR3, and report-data key binding. Treat the checked-in
+> implementation and `deploy/README.md` as authoritative where they differ from the original task sketches.
+> `spike/` is retained until Lane C and Lane D have merged in order.
+
 ## Global Constraints
 
 - Everything in Lane A's Global Constraints applies (versions, PATH for Docker Desktop, genesis seed, override).

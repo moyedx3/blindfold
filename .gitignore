@@ -31,3 +31,7 @@ creator/test-results/
 # Playwright run artifacts
 buyer/test-results/
 buyer/playwright-report/
+# Local demo processes, encrypted content, and creator recovery bundles
+.local/
+# Redacted live-smoke output (upload deliberately as CI evidence when needed)
+deploy/evidence/

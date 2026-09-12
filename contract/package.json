@@ -9,6 +9,7 @@
   "scripts": {
     "compile": "bash scripts/compile.sh",
     "deploy": "tsx scripts/deploy.ts",
+    "wallet:prepare": "tsx scripts/prepare-wallet.ts",
     "fund": "tsx scripts/fund.ts",
     "ledger": "tsx scripts/ledger.ts",
     "test": "vitest run",

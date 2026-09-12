@@ -1,0 +1,14 @@
+{
+  "undeployed": {
+    "contract_address": null,
+    "indexer_url": "http://127.0.0.1:8080"
+  },
+  "preprod": {
+    "contract_address": null,
+    "midnight_indexer_url": "https://indexer.preprod.midnight.network/api/v4/graphql",
+    "midnight_indexer_ws_url": "wss://indexer.preprod.midnight.network/api/v4/graphql/ws",
+    "indexer_url": null,
+    "measurement_rtmr3": null,
+    "image_digest": null
+  }
+}
