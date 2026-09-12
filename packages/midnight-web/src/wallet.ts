@@ -23,21 +23,35 @@ export type ConnectedWallet = {
   shieldedAddress: string; coinPublicKey: string; encryptionPublicKey: string;
 };
 
-// Lace tears down the remote proxy returned by connect() when its authorization tab or popup
-// closes ("Remote API with channel 'midnight-wallet' was shutdown: object can no longer be used").
-// The authorization itself sticks, so a second connect() returns a live proxy without prompting.
-const isProxyShutdown = (e: unknown) => /shutdown|no longer be used/i.test(e instanceof Error ? e.message : String(e));
+// Lace tears down the remote proxy returned by connect() whenever its own window closes (the
+// authorization tab after approval, and possibly a signing popup later): every call on the old object
+// then fails with "Remote API with channel 'midnight-wallet' was shutdown: object can no longer be
+// used". The authorization itself sticks, so a fresh connect() returns a live proxy without prompting.
+// `resilientConnectedApi` hides this: any call that hits the shutdown error reconnects once and retries.
+export const isProxyShutdown = (e: unknown) => /shutdown|no longer be used/i.test(e instanceof Error ? e.message : String(e));
+
+export function resilientConnectedApi(initial: InitialAPI, networkId: string, first: ConnectedAPI): ConnectedAPI {
+  let current = first;
+  return new Proxy(first, {
+    get(_target, prop) {
+      const value = (current as any)[prop];
+      if (typeof value !== 'function') return value;
+      return async (...args: unknown[]) => {
+        try {
+          return await (current as any)[prop](...args);
+        } catch (e) {
+          if (!isProxyShutdown(e)) throw e;
+          current = await initial.connect(networkId);
+          return await (current as any)[prop](...args);
+        }
+      };
+    },
+  }) as ConnectedAPI;
+}
 
 export async function connectWallet(networkId: string, choice: WalletChoice): Promise<ConnectedWallet> {
-  let api = await choice.api.connect(networkId);
-  let cfg;
-  try {
-    cfg = await api.getConfiguration();
-  } catch (e) {
-    if (!isProxyShutdown(e)) throw e;
-    api = await choice.api.connect(networkId);
-    cfg = await api.getConfiguration();
-  }
+  const api = resilientConnectedApi(choice.api, networkId, await choice.api.connect(networkId));
+  const cfg = await api.getConfiguration();
   const sh = await api.getShieldedAddresses();
   return {
     name: choice.name, api, networkId: cfg.networkId,
