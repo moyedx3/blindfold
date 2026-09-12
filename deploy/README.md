@@ -106,11 +106,17 @@ Deploy and verify:
 
 ```bash
 npm run deploy -w contract -- --network preprod
-npm run ledger -w contract -- --network preprod
+npm run ledger -w contract -- <printed-contract-address> --network preprod
 ```
 
 Record the printed 64-hex address as `preprod.contract_address` in `deploy/networks.json`. Confirm the
 deployment independently in <https://preprod.midnightexplorer.com/>.
+
+The ledger script currently treats its first positional argument as the contract address. Passing
+`--network` first is interpreted as an address and fails hex validation. Supply the address first as above.
+
+For the completed local devnet verification, its limitations, and remaining public-network tests, see
+[`docs/deployment-verification-2026-09-11.md`](../docs/deployment-verification-2026-09-11.md).
 
 ## Build and publish the indexer image
 
