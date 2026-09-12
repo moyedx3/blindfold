@@ -91,3 +91,17 @@ describe('connectWallet against a Lace proxy that shuts down after approval', ()
     await expect(connectWallet('preprod', choice)).rejects.toThrow(/user rejected/);
   });
 });
+
+describe('connectWallet when connect() itself is shut down by the authenticator window', () => {
+  it('retries connect() and then proceeds', async () => {
+    const live = {
+      getConfiguration: async () => ({ networkId: 'preprod', indexerUri: 'http://i', indexerWsUri: 'ws://i' }),
+      getShieldedAddresses: async () => ({ shieldedAddress: 'a', shieldedCoinPublicKey: '11'.repeat(32), shieldedEncryptionPublicKey: '22'.repeat(32) }),
+    };
+    let calls = 0;
+    const choice = { key: 'mnLace', name: 'Lace', apiVersion: '4.0.1', api: { connect: async () => { calls++; if (calls === 1) throw new Error("Remote API with channel 'midnight-authenticator' was shutdown: object can no longer be used."); return live; } } } as any;
+    const w = await connectWallet('preprod', choice);
+    expect(calls).toBe(2);
+    expect(w.networkId).toBe('preprod');
+  });
+});

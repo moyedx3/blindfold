@@ -49,8 +49,25 @@ export function resilientConnectedApi(initial: InitialAPI, networkId: string, fi
   }) as ConnectedAPI;
 }
 
+// connect() itself can reject with the same shutdown error on the 'midnight-authenticator' channel when
+// Lace closes its authorization window right after the user approves. The approval is stored, so a
+// retry resolves without prompting again.
+async function connectWithRetry(initial: InitialAPI, networkId: string, attempts = 3): Promise<ConnectedAPI> {
+  let lastError: unknown;
+  for (let i = 0; i < attempts; i += 1) {
+    try {
+      return await initial.connect(networkId);
+    } catch (e) {
+      if (!isProxyShutdown(e)) throw e;
+      lastError = e;
+      await new Promise((r) => setTimeout(r, 500));
+    }
+  }
+  throw lastError;
+}
+
 export async function connectWallet(networkId: string, choice: WalletChoice): Promise<ConnectedWallet> {
-  const api = resilientConnectedApi(choice.api, networkId, await choice.api.connect(networkId));
+  const api = resilientConnectedApi(choice.api, networkId, await connectWithRetry(choice.api, networkId));
   const cfg = await api.getConfiguration();
   const sh = await api.getShieldedAddresses();
   return {
