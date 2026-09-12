@@ -11,7 +11,9 @@ against public NIGHT in fixed 5/10/50 NIGHT denominations. State the privacy cla
 moves public NIGHT into a private balance in fixed denominations; the purchase spends that private
 balance, so the chain sees a drop id and a one-time key, not a wallet. The content key is delivered by an
 attested TEE." The top-up transaction is public by construction; the anonymity set of a purchase is
-everyone who topped up the same denomination and has not spent it in a linkable way.
+everyone who topped up the same denomination and has not spent it in a linkable way. A top-up equal to one
+price immediately followed by a purchase links the two by amount and time; that is why the demo tops up
+before the creator scene and buys later, not right after topping up.
 
 ## Already evidenced
 

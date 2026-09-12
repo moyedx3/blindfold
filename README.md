@@ -3,17 +3,20 @@
 Sell content that unlocks with a private payment, with nobody in the middle able to read it.
 Built on [Midnight](https://midnight.network) for the Midnight Korea Hackathon 2026.
 
-Blindfold combines a Compact contract, shielded NIGHT, browser-side encryption, and an attested TEE:
+Blindfold combines a Compact contract, a private balance (bNIGHT), browser-side encryption, and an
+attested TEE:
 
 1. A creator encrypts content in the browser, registers its price and key commitment on-chain, and seals
    the content key to the TEE only after verifying its attestation.
-2. A buyer pays through the contract with shielded NIGHT and supplies a fresh one-time public key in the
-   same transaction.
+2. A buyer tops up public NIGHT into a private balance in fixed 5/10/50 NIGHT denominations (public
+   Midnight networks have no shielded NIGHT to spend directly), then pays by spending that private balance
+   through the contract and supplying a fresh one-time public key in the same transaction.
 3. The TEE observes the purchase and seals the content key to that one-time key. The buyer opens it and
    decrypts the content locally.
 
-The contract enforces payment; Zswap protects the buyer's payment identity; the TEE keeps the content key
-from the service operator.
+The contract enforces payment; the purchase is a zswap spend of the private balance, so the chain sees a
+drop id and a one-time key, not a wallet — the top-up itself is public. The TEE keeps the content key from
+the service operator.
 
 ## Status
 

@@ -8,8 +8,9 @@
 ## 한 줄 요약 (KR)
 
 Blindfold는 잠긴 콘텐츠를 프라이버시 결제로 여는 "눈 가린 우체부"다. 크리에이터가 콘텐츠를 암호화해 올리고,
-구매자가 shielded NIGHT로 Compact 컨트랙트에 결제하면, 콘텐츠 키를 쥔 TEE 인덱서가 구매자의 일회용 키로 키를
-봉인해 전달한다. 팀이 이전에 만든 프로토타입(내부 이름 Drop)의 설계를 Midnight 위에 다시 만든 것이다.
+구매자가 공개 NIGHT를 5·10·50 단위로 Private balance(bNIGHT, 컨트랙트가 `wrap`으로 발행)에 채운 뒤 그 Private
+balance로 Compact 컨트랙트에 결제하면, 콘텐츠 키를 쥔 TEE 인덱서가 구매자의 일회용 키로 키를 봉인해 전달한다.
+팀이 이전에 만든 프로토타입(내부 이름 Drop)의 설계를 Midnight 위에 다시 만든 것이다.
 Midnight Korea Hackathon 2026 제출용이며, 마감은 **2026-09-28 00:00 KST**.
 2026-09-05에 로컬 devnet에서 핵심 스파이크를 통과했다: 컨트랙트가 가격을 강제하고 구매자의 일회용 키를
 원자적으로 기록하며, Lace 지갑에서 shielded NIGHT로 결제가 되고, 크리에이터가 에스크로된 코인을 회수한다.
@@ -98,9 +99,11 @@ Blindfold sells unlockable content with a private payment and a key handoff that
 1. The creator encrypts content in the browser with a fresh key `K_drop`, uploads only the ciphertext,
    registers the drop on a Compact contract (price plus a commitment to `K_drop`), and seals `K_drop` to
    an indexer running inside a TEE (Intel TDX on Phala Cloud) after verifying its attestation.
-2. The buyer pays shielded NIGHT through the contract's `purchase` circuit and passes a fresh one-time
-   public key `e_pub`. The circuit enforces the price and records `e_pub` on the public ledger atomically
-   with the payment.
+2. The buyer tops up public NIGHT into a private balance in fixed 5/10/50 NIGHT denominations (`wrap`;
+   public Midnight networks have no shielded NIGHT to spend directly), then pays by spending that private
+   balance (bNIGHT) through the contract's `purchase` circuit and passes a fresh one-time public key
+   `e_pub`. The circuit enforces the price and records `e_pub` on the public ledger atomically with the
+   payment.
 3. The indexer watches the ledger, seals `K_drop` to each new `e_pub` (libsodium sealed box), and
    publishes the blob. The buyer trial-opens blobs with `e_priv`, recovers `K_drop`, decrypts the content.
 
@@ -111,7 +114,9 @@ the payment was sufficient.
 
 **Why a TEE anyway.** The ledger is public, so `K_drop` cannot live on-chain. Somebody off-chain has to
 hold it and answer purchases. The TEE is what stops that somebody's operator from reading the content.
-Buyer anonymity comes from Zswap and does not depend on the TEE; content confidentiality does.
+The purchase is a zswap spend of the private balance, so buyer anonymity does not depend on the TEE; its
+anonymity set is everyone who topped up the same denomination and has not spent it in a linkable way
+(the top-up itself is public). Content confidentiality does depend on the TEE.
 
 This is the second iteration of a design the team prototyped earlier (internal name "Drop"); the TEE
 provisioning, dispatch-blob, and content-encryption code carries over from it.
@@ -165,7 +170,7 @@ Design choices:
 | Need | Mechanism |
 |---|---|
 | Buyer tells the indexer where to send the key, anonymously | Circuit `purchase(dropId, ePub, coin)`; `ePub` is `disclose()`d into a ledger `Map<Uint<64>, Bytes<32>>` |
-| Buyer stays anonymous | Zswap shielded NIGHT; the coin is `receiveShielded` into the contract |
+| Buyer stays anonymous | Zswap spend of the private balance (bNIGHT, minted from public NIGHT by `wrap`); the coin is `receiveShielded` into the contract |
 | Indexer learns about payments without holding any creator key | It reads the public `purchases` map through the Midnight indexer GraphQL |
 | Wallet UX | DApp Connector v4 (`window.midnight.*`), `findDeployedContract(...).callTx.purchase(...)` |
 
