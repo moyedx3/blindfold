@@ -26,6 +26,19 @@ function setup() {
 }
 
 describe('Watcher', () => {
+  it('keeps dispatch progress per contract address', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'bf-w-'));
+    const a = DispatchedStore.forContract(dir, 'AA'.repeat(32));
+    const b = DispatchedStore.forContract(dir, 'bb'.repeat(32));
+    expect(a.path).toContain('aa'.repeat(32));
+    expect(a.path).not.toBe(b.path);
+    await a.save({ dispatched: { '0': 'k0', '1': 'k1' }, pending: [], failures: {} });
+    expect(await b.load()).toEqual({ dispatched: {}, pending: [], failures: {} });
+    const { bucket, engine } = setup();
+    const w = new Watcher({ reader: new StaticLedgerReader(snap([[0n, 1n]])), engine, store: b });
+    expect(await w.tick()).toEqual({ dispatched: 1, pending: 0 });
+    expect((await bucket.list()).length).toBe(1);
+  });
   it('dispatches new purchases once and persists progress', async () => {
     const { bucket, store, engine } = setup();
     const reader = new StaticLedgerReader(snap([[0n, 1n], [1n, 1n]]));

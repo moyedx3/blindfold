@@ -39,7 +39,7 @@ const catalog = new Catalog();
 const content = new FsBucket(join(cfg.dataDir, 'content'));
 const dispatch = new FsBucket(join(cfg.dataDir, 'dispatch'));
 const engine = new Engine(catalog, dispatch);
-const watcher = new Watcher({ reader, engine, store: new DispatchedStore(join(cfg.dataDir, 'dispatched.json')), log });
+const watcher = new Watcher({ reader, engine, store: DispatchedStore.forContract(cfg.dataDir, cfg.contractAddress), log });
 
 const server = buildServer({ tee, kp, catalog, content, dispatch, reader, network: cfg.network, contractAddress: cfg.contractAddress });
 await server.listen({ port: cfg.port, host: '0.0.0.0' });

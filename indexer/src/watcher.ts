@@ -1,5 +1,5 @@
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
-import { dirname } from 'node:path';
+import { dirname, join } from 'node:path';
 import type { LedgerReader } from './chain';
 import type { Engine } from './engine';
 
@@ -9,6 +9,12 @@ const MAX_FAILURES = 3;
 
 export class DispatchedStore {
   constructor(private readonly file: string) {}
+  /** One progress file per contract. Purchase indices restart at 0 on every deployment, so a
+   *  shared file would make a new contract's first purchases look already dispatched. */
+  static forContract(dataDir: string, contractAddress: string): DispatchedStore {
+    return new DispatchedStore(join(dataDir, `dispatched-${contractAddress.toLowerCase()}.json`));
+  }
+  get path(): string { return this.file; }
   async load(): Promise<DispatchedState> {
     try {
       const raw = JSON.parse(await readFile(this.file, 'utf8'));
