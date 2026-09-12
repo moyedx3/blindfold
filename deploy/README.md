@@ -185,9 +185,9 @@ phala cvms attestation --cvm-id <id> --json > /tmp/blindfold-attestation.json
 Deployed 2026-09-12: CVM `ba917fac-0e75-45d5-8572-870b22c51cd7`, app id `94ef50c5…0429`, endpoint
 `https://94ef50c5719468f34cdb06e000e8f3ee415f0429-8080.dstack-pha-prod5.phala.network`, about $0.06/h.
 
-If the GHCR package is still private (the repository is private until submission), add registry
-credentials to the same ignored `.env` so dstack can pull the image; they travel as encrypted
-environment variables, never in the compose file:
+The env file now carries nothing required (image and contract are literal in the compose). If the GHCR
+package is private, add registry credentials to that ignored `.env` so dstack can pull the image; they
+travel as encrypted environment variables, never in the compose file:
 
 ```bash
 DSTACK_DOCKER_USERNAME=<github-username>
@@ -199,11 +199,14 @@ Do not pass `--no-public-tcbinfo`: keep the TCB info public so `attest:inspect` 
 cross-checked from the Phala dashboard. Logs stay private (`phala.toml` already sets `public_logs = false`).
 
 Note on the pin: Phala documents RTMR3 as covering the compose hash **and** the app id, instance id,
-and key provider. Pinning RTMR3 therefore pins this CVM instance, not just the image. Observed on
-2026-09-12: an env-only `phala deploy` update of the same CVM changed RTMR3 while the provisioning
-public key stayed the same (same app id, same KMS-derived key). So after any update: re-run
-`attest:inspect`, re-pin `measurement_rtmr3`, re-run `smoke:live`; creators do not need to re-provision.
-Recreating the CVM changes both the measurement and the key, which does require re-provisioning.
+and key provider. dstack measures the compose *text*, so `deploy/cvm/docker-compose.yml` writes the image
+digest and the contract address literally instead of reading them from the env file: observed on
+2026-09-13, changing the image through `${IMAGE}` left RTMR3 unchanged, while changing the literal
+compose changed it (`3509154d…` → `147a17b3…`). With the literal compose, a pinned RTMR3 therefore
+identifies exactly this image and this contract on this CVM instance. After any compose change:
+redeploy, re-run `attest:inspect`, re-pin `measurement_rtmr3`, re-run `smoke:live`, and rebuild the
+site. The provisioning public key stays the same across updates of one CVM (same app id), so creators
+do not need to re-provision; recreating the CVM changes both.
 
 Use `phala cvms get blindfold-indexer --json` to obtain the public HTTPS endpoint. From the repository root,
 cryptographically inspect the indexer's own quote and key binding:

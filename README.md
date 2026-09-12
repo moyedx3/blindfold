@@ -30,7 +30,10 @@ CVM: a genuine TDX quote verifies as `UpToDate`, its `report_data` is bound to t
 with real Lace wallets on Preprod is still to be done. Later that day `purchase` was changed to require the
 contract's own bNIGHT instead of shielded NIGHT (public Midnight networks have none); the bNIGHT contract was
 redeployed to Preprod, the CVM was updated to the rebuilt image and re-pinned, and `smoke:live` passed again
-against the values now in `deploy/networks.json`. The team's live checklist of what is done, verified, and still open is [`docs/status.md`](docs/status.md).
+against the values now in `deploy/networks.json`. On 2026-09-13 the full loop ran on Preprod with real 1AM
+wallets (top-up, register with browser-side attestation, purchase, unlock, withdraw, cash out); each content
+now sells exactly once and leaves the catalog when bought, and the CVM compose pins the image digest and
+contract address literally so the RTMR3 pin covers them. The team's live checklist of what is done, verified, and still open is [`docs/status.md`](docs/status.md).
 
 **Live demo (Preprod):** buyer at <https://blindfold-psi.vercel.app/>, creator at
 <https://blindfold-psi.vercel.app/creator/> (each title bar links to the other). Both talk to the Phala CVM

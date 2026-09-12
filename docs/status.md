@@ -80,6 +80,7 @@ DUST가 쌓이는 데 시간이 걸리므로 가장 먼저 시작한다.
 - [x] `npm run attest:inspect -- <endpoint>` 통과 — 2026-09-12: `UpToDate`, report_data 바인딩 ok, RTMR3 `0b2236ad…8468` (Phala `cvms attestation`의 tcb_info와 일치).
 - [x] RTMR3, endpoint, image digest를 `deploy/networks.json`에 기록 — 2026-09-12. `contract_address`는 null 유지.
 - [x] `npm run smoke:live` 통과 — 2026-09-12 06:45Z: health ok, `/contract` = Preprod 주소, 카탈로그 0개, quote UpToDate, RTMR3 핀 일치, 키 바인딩 ok (`deploy/evidence/smoke-live.json`, gitignored).
+- [x] **2026-09-13 재배포(콘텐츠 1회 판매 제한):** 이미지 0.3.0 `sha256:693f1723…` (run 34711138858), 컨트랙트 `84d80ed010cea433e242379f3e82927477b09d0268fcfcc36e69753279546a8f`, compose에 digest·주소를 리터럴로 박아 RTMR3가 이미지와 컨트랙트를 실제로 고정하도록 변경 → RTMR3 `147a17b3…724e` 재핀, `smoke:live` 통과, 사이트 재배포. 이전 컨트랙트 `02170eeb…`는 폐기.
 - [x] **확인됨: env만 바꾼 `phala deploy` 업데이트로도 RTMR3가 바뀐다** (`0b2236ad…` → `3509154d…`, 2026-09-12). 반면 provisioning 공개키는 그대로다(app-id가 같으면 KMS 파생 키가 같음). 즉 업데이트 뒤에는 **재핀만** 필요하고 재-provision은 필요 없다. 새 CVM을 만들면 둘 다 바뀐다.
 - [ ] CVM stop → start(같은 인스턴스) 후 RTMR3가 유지되는지 확인. 데모 전 비용 절감 여부를 정하려면 필요. **주의:** Phala 문서상 RTMR3에는 compose-hash뿐 아니라 app-id, instance-id, key-provider가 함께 들어간다. 즉 RTMR3 핀은 "이 CVM 인스턴스"를 고정하는 것이라 CVM을 새로 만들면 무조건 바뀐다. 데모용 단일 인스턴스에는 문제없지만 발표에서는 "인스턴스 핀"이라고 정확히 말한다.
 - [x] 실제 quote를 크리에이터 검증기 코드로 통과 — 2026-09-12: 위 quote를 `creator/test/fixtures/phala-attest-2026-09-12.json`에 저장하고 `LIVE_QVL=1 npx vitest run test/live-quote.test.ts`(creator/)로 `verifyQuote` + `validateVerifiedQuote`가 UpToDate·RTMR3·키 바인딩을 통과. 브라우저 자체에서 돌리는 확인은 아래 항목.
@@ -105,6 +106,7 @@ Preprod와 메인넷에는 shielded NIGHT가 없다(`docs/superpowers/specs/2026
 
 ### E-2. 공개 환경에서 A 반복 (C, D, E-1/Task 7 다음) — 담당: ___
 
+- [x] **Preprod 실제 지갑 한 바퀴 완료 — 2026-09-13, 1AM 지갑.** 구매자 Top up(wrap) → 크리에이터 등록·브라우저 attestation 검증·provision(CVM) → 구매자 Buy·언락 → 크리에이터 Withdraw → Cash out to public NIGHT. Lace는 Preprod sync가 끝나지 않아(확장 서비스 워커가 죽으며 95~99%를 오감) 제외, 로컬 devnet용으로만 둔다. 1AM은 지갑 안에서 증명하고(`getProvingProvider`) unshielded-only tx는 DUST를 대납하며, shielded 지출(구매·withdraw)은 본인 DUST로 낸다.
 - [ ] 크리에이터: Preprod Lace로 등록·provision (endpoint와 RTMR3는 Task 7 재배포 이후 값).
 - [ ] 구매자: Preprod Lace로 Top up(5/10/50 NIGHT 중 하나로 Private balance 채우기).
 - [ ] 구매자: Preprod Lace로 구매·언락·복호화. explorer에서 지갑 주소가 컨트랙트 인자에 없는 것 확인.
