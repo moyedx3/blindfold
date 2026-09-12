@@ -164,6 +164,24 @@ phala logs
 phala cvms attestation --json > /tmp/blindfold-attestation.json
 ```
 
+If the GHCR package is still private (the repository is private until submission), add registry
+credentials to the same ignored `.env` so dstack can pull the image; they travel as encrypted
+environment variables, never in the compose file:
+
+```bash
+DSTACK_DOCKER_USERNAME=<github-username>
+DSTACK_DOCKER_PASSWORD=<personal-access-token with read:packages>
+DSTACK_DOCKER_REGISTRY=ghcr.io
+```
+
+Prefer `--no-public-logs --no-public-tcbinfo` is *not* what you want here: keep TCB info public so
+`attest:inspect` can be cross-checked from the Phala dashboard, but keep logs private (`phala.toml`
+already sets `public_logs = false`).
+
+Note on the pin: Phala documents RTMR3 as covering the compose hash **and** the app id, instance id,
+and key provider. Pinning RTMR3 therefore pins this CVM instance, not just the image. Recreating the
+CVM changes it even with the same digest; a restart of the same instance should not.
+
 Use `phala cvms get blindfold-indexer --json` to obtain the public HTTPS endpoint. From the repository root,
 cryptographically inspect the indexer's own quote and key binding:
 

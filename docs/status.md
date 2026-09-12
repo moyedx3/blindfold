@@ -68,12 +68,14 @@ DUST가 쌓이는 데 시간이 걸리므로 가장 먼저 시작한다.
 
 외부 의존이 가장 많은 구간이라 여기서 막히면 E와 F가 밀린다. 절차는 `deploy/README.md`의 "Build and publish the indexer image"와 "Phala CVM".
 
-- [ ] 인덱서 이미지 빌드·GHCR push: Actions의 **release-image** 워크플로(`gh workflow run release-image.yml --ref main`)가 linux/amd64로 빌드하고 digest를 job summary에 찍는다. GitHub 패키지 설정에서 public으로 전환.
+- [x] 인덱서 이미지 빌드·GHCR push — 2026-09-12 · main `0bd5134` · Actions **release-image** [run 34671670491](https://github.com/moyedx3/blindfold/actions/runs/34671670491), `ghcr.io/moyedx3/blindfold-indexer@sha256:2b09efbe6f99e8eb89b1ee31da5416ff980c14432bf1ebbc56b830fa5ab4d4e3` (linux/amd64). 아직 attestation 검증 전이라 `networks.json`에는 넣지 않았다.
+- [ ] CVM이 이미지를 당길 수 있게: GitHub 패키지 설정에서 public으로 전환하거나, 레포가 public이 될 때까지는 `deploy/cvm/.env`에 `DSTACK_DOCKER_USERNAME`, `DSTACK_DOCKER_PASSWORD`(read:packages PAT), `DSTACK_DOCKER_REGISTRY=ghcr.io`를 넣어 encrypted env로 전달 ([Phala 문서](https://docs.phala.com/phala-cloud/cvm/create-with-private-docker-image)).
+- [ ] `npx phala login` (device flow, 브라우저 승인) 후 `npx phala status`로 확인. 크레딧 잔액 확인.
 - [ ] `deploy/cvm/.env` 작성(IMAGE는 digest 고정, CONTRACT_ADDRESS는 C의 값) → `phala deploy …` → 공개 HTTPS endpoint 확보.
 - [ ] `curl <endpoint>/attest`가 `"dev"`가 아닌 긴 quote를 주는지, `<endpoint>/contract`가 Preprod 주소를 주는지.
 - [ ] `npm run attest:inspect -- <endpoint>` 통과: TCB `UpToDate`, `report_data = sha256(provisioning_pubkey)`, RTMR3 출력.
 - [ ] RTMR3, endpoint, image digest를 `deploy/networks.json`에 기록 → `npm run smoke:live` 통과.
-- [ ] CVM 재시작 후 RTMR3가 그대로인지, 이미지를 다시 빌드하면 바뀌는지 확인. 바뀌면 재핀 + 재-provision.
+- [ ] CVM 재시작 후 RTMR3가 그대로인지, 이미지를 다시 빌드하면 바뀌는지 확인. 바뀌면 재핀 + 재-provision. **주의:** Phala 문서상 RTMR3에는 compose-hash뿐 아니라 app-id, instance-id, key-provider가 함께 들어간다. 즉 RTMR3 핀은 "이 CVM 인스턴스"를 고정하는 것이라 CVM을 새로 만들면 무조건 바뀐다. 데모용 단일 인스턴스에는 문제없지만 발표에서는 "인스턴스 핀"이라고 정확히 말한다.
 - [ ] **브라우저 검증기 실전 확인:** 크리에이터 앱을 `VITE_INDEXER_URL=<endpoint> VITE_EXPECTED_MEASUREMENT_HEX=<rtmr3>`로 띄워 실제 quote로 provision이 통과하는지. `creator/src/qvl-verifier.ts`는 아직 실제 quote를 본 적이 없다. 실패하면 이슈로 등록하고 `attest:inspect` 결과와 대조.
 - [ ] 공개 네트워크에 붙었을 때 dev mode 체크박스가 비활성인지.
 
