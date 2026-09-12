@@ -1,5 +1,7 @@
-// THROWAWAY: fund a second wallet (e.g. Lace) from the devnet genesis wallet.
-// Usage: npx tsx src/fund.ts <unshielded addr> [<shielded addr>] [NIGHT amount]
+// Fund a second wallet (e.g. Lace) with unshielded and, optionally, shielded NIGHT.
+// On the local devnet the source is the genesis wallet; on preview/preprod it is the
+// deployment wallet prepared by `npm run wallet:prepare` (it must hold NIGHT and DUST).
+// Usage: npm run fund -w contract -- <unshielded addr> [<shielded addr>] [NIGHT amount] --network <id>
 // Accepts addresses encoded for any network (e.g. mainnet `mn_addr1…`) and re-encodes them for the
 // active network: the key bytes are network-independent, only the bech32m network segment differs.
 import { WebSocket } from 'ws';
@@ -7,7 +9,7 @@ import { WebSocket } from 'ws';
 globalThis.WebSocket = WebSocket;
 import { UnshieldedAddress, ShieldedAddress, MidnightBech32m } from '@midnight-ntwrk/wallet-sdk-address-format';
 import { bech32m } from '@scure/base';
-import { resolveNetwork, GENESIS_SEED } from './lib/network';
+import { resolveNetwork, loadState, GENESIS_SEED } from './lib/network';
 import { createWallet, persistWalletState } from './lib/wallet';
 
 const NATIVE = '0000000000000000000000000000000000000000000000000000000000000000';
@@ -30,7 +32,13 @@ function reencode(addr: string): MidnightBech32m {
   return local;
 }
 
-const ctx = await createWallet({ network, networkConfig: config, seed: GENESIS_SEED });
+let seed = GENESIS_SEED;
+if (network !== 'undeployed') {
+  const stored = loadState()?.wallets?.[network];
+  if (!stored) throw new Error(`no ${network} wallet in the state file; run: npm run wallet:prepare -w contract -- --network ${network}`);
+  seed = stored.seed;
+}
+const ctx = await createWallet({ network, networkConfig: config, seed });
 await ctx.wallet.waitForSyncedState();
 await persistWalletState(network, ctx);
 
