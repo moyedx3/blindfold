@@ -19,8 +19,9 @@ wallet test performed during this run. Public testnet and mainnet readiness rema
   contract arguments.
 - The indexer validates provisioning against contract price, key commitment, and uploaded ciphertext.
 - The indexer dispatches an 80-byte sealed key blob that the buyer can open and use to decrypt content.
-- Creator and buyer fake-wallet browser smoke tests cover their UI orchestration without production-only
-  shortcuts leaking into a production build.
+- Creator and buyer fake-wallet browser smoke tests cover their UI orchestration. They run against the Vite
+  dev server, so they do not prove that a production build excludes the fake-wallet and dev-attestation paths;
+  those gates are `import.meta.env.DEV` checks in code, not something the test suite exercises.
 
 ## Release evidence still required
 

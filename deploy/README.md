@@ -163,8 +163,14 @@ cryptographically inspect the indexer's own quote and key binding:
 npm run attest:inspect -- https://<cvm-endpoint>
 ```
 
-Record the printed 96-hex `RTMR3`, endpoint, and image digest in `deploy/networks.json`. Configure the
-creator with:
+Record the printed 96-hex `RTMR3`, endpoint, and image digest in `deploy/networks.json`.
+
+This first inspection is trust-on-first-use: the RTMR3 you pin comes from the quote you are inspecting, so it
+proves that a genuine TDX enclave with that measurement is answering, not that the measurement belongs to the
+reviewed image. Close that gap before publishing the pin by rebuilding the image from the tagged commit and
+checking that its digest matches the one the CVM reports.
+
+Configure the creator with:
 
 ```bash
 VITE_INDEXER_URL=https://<cvm-endpoint> \
