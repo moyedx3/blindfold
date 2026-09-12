@@ -14,7 +14,8 @@
     "ledger": "tsx scripts/ledger.ts",
     "test": "vitest run",
     "test:devnet": "DEVNET=1 vitest run test/flow.test.ts",
-    "wrap": "tsx scripts/wrap.ts"
+    "wrap": "tsx scripts/wrap.ts",
+    "dust:register": "tsx scripts/register-dust.ts"
   },
   "dependencies": {
     "@midnight-ntwrk/compact-runtime": "0.16.0",
