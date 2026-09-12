@@ -174,9 +174,8 @@ DSTACK_DOCKER_PASSWORD=<personal-access-token with read:packages>
 DSTACK_DOCKER_REGISTRY=ghcr.io
 ```
 
-Prefer `--no-public-logs --no-public-tcbinfo` is *not* what you want here: keep TCB info public so
-`attest:inspect` can be cross-checked from the Phala dashboard, but keep logs private (`phala.toml`
-already sets `public_logs = false`).
+Do not pass `--no-public-tcbinfo`: keep the TCB info public so `attest:inspect` results can be
+cross-checked from the Phala dashboard. Logs stay private (`phala.toml` already sets `public_logs = false`).
 
 Note on the pin: Phala documents RTMR3 as covering the compose hash **and** the app id, instance id,
 and key provider. Pinning RTMR3 therefore pins this CVM instance, not just the image. Recreating the
