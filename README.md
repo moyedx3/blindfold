@@ -94,7 +94,7 @@ Versions: Compact 0.31.1 (language 0.23), midnight-js 4.1.1, DApp Connector API 
 | Which purchase belongs to whom (fresh one-time key each time) | Creator's cash-out address and amount | Our app code |
 | Content key and plaintext (enclave only) | Ciphertext and sealed keys | Intel TDX, dstack, our indexer code |
 
-The anonymity set of one purchase is everyone who topped up the same denomination. The TEE moves trust; it does not remove it. See [Limits](#limits).
+The anonymity set of one purchase is everyone who topped up the same denomination. The TEE moves trust; it does not remove it. Boundaries are listed in [`docs/demo-readiness.md`](docs/demo-readiness.md).
 
 ## Try it on Preprod
 
@@ -142,21 +142,6 @@ npm run attest:inspect -- https://94ef50c5719468f34cdb06e000e8f3ee415f0429-8080.
 ```
 
 `attest:inspect` prints the enclave's TDX quote status (expected `UpToDate`), its RTMR3, and the `report_data` binding to the provisioning key. Compare the RTMR3 with `measurement_rtmr3` in `deploy/networks.json`; the same value is compiled into the creator app. The real-chain contract tests (`contract/test/flow.test.ts`) and the indexer purchase-to-key E2E need the local devnet; see the deploy runbook.
-
-## Status (2026-09-13)
-
-- Contract deployed on Preprod; indexer running in a Phala Cloud CVM with a genuine TDX quote (`UpToDate`) and its RTMR3 pinned in the apps. The CVM compose pins the image digest and contract address literally, so the RTMR3 pin covers both.
-- Full loop verified on Preprod with 1AM wallets: top-up, register with browser-side attestation, purchase, unlock, withdraw, cash out.
-- Suite: 140+ unit tests, 12 real-chain contract cases, indexer E2E, `smoke:live`.
-- The team's checklist of what is done, verified, and open: [`docs/status.md`](docs/status.md).
-
-## Limits
-
-- Top-ups are public; a purchase hides among everyone who topped up the same denomination.
-- The TEE is a trust assumption (Intel, dstack, our code). There is no reproducible build yet.
-- Redeploying the enclave changes RTMR3; creators re-provision from their recovery file (the key catalog is intentionally in memory).
-- No refund or re-delivery flow if key delivery fails after payment. Each content sells once (a scope decision, not a design limit).
-- Decrypted content can be copied; network metadata and finality depth are out of scope.
 
 ## Repository map
 
