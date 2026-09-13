@@ -8,7 +8,7 @@ Built for the Midnight Korea Hackathon 2026. Everything below runs on Midnight *
 |---|---|
 | 🛒 Live demo (buyer) | <https://blindfold-psi.vercel.app/> |
 | 🎨 Live demo (creator) | <https://blindfold-psi.vercel.app/creator/> |
-| 🎬 Demo video | _(link in the submission form)_ |
+| 🎬 Demo video | <https://youtu.be/a_T88eqAtEs> |
 | 📜 Contract (Preprod) | `84d80ed010cea433e242379f3e82927477b09d0268fcfcc36e69753279546a8f` |
 | 🔐 TEE indexer | Phala Cloud CVM, Intel TDX — pinned values in [`deploy/networks.json`](deploy/networks.json) |
 | 🧾 Submission text | [`docs/status.md`](docs/status.md) has the team's live checklist |
