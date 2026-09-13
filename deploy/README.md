@@ -267,6 +267,10 @@ release:
 
 The CVM volume retains encrypted content and dispatch state, but the in-memory key catalog intentionally
 does not survive restart. Do not persist plaintext `K_drop` outside the measured workload as a shortcut.
+Stopping and starting the CVM (`phala cvms stop` / `start`) keeps the app id, endpoint, provisioning key and
+volume but yields a **new RTMR3** (observed 2026-09-13). After every start run `npm run cvm:repin`: it reads the
+current RTMR3, writes it to `deploy/networks.json`, runs `smoke:live`, and rebuilds and redeploys the site. Commit
+`deploy/networks.json` afterwards and ask creators to re-provision from their recovery files.
 Dispatch progress is kept per contract (`dispatched-<contract>.json`): purchase indices start at 0 on every
 contract, so pointing the same volume at a new contract starts a fresh log while old dispatch blobs stay
 (buyers trial-open and ignore them). Before image 0.3.1 the log was shared and a new contract's first
