@@ -101,6 +101,17 @@ Preprod와 메인넷에는 shielded NIGHT가 없다(`docs/superpowers/specs/2026
 - [x] 크리에이터 Cash out to public NIGHT, 공개 NIGHT 잔액이 늘어나는지 확인.
 - [x] 기록을 남기고, `README.md` 상태 문단을 갱신.
 
+### E-3. CVM 재시작 절차 (2026-09-27, 심사 전) — 담당: ___
+
+CVM은 2026-09-13에 비용 절감을 위해 껐다(`phala cvms stop`). 정지 중에는 스토리지 비용(약 $2/월)만 나간다.
+**켜면 RTMR3가 새로 나오므로** 아래 순서를 그대로 밟는다. 켠 뒤 데모 사이트가 새 핀을 쓸 때까지 크리에이터 페이지의 attestation 검증은 실패한다.
+
+- [ ] `npx phala cvms start ba917fac-0e75-45d5-8572-870b22c51cd7` → 약 40초 뒤 `/health`가 `ok`.
+- [ ] `npm run cvm:repin` — RTMR3 읽기 → `deploy/networks.json` 갱신 → `smoke:live` → 사이트 재빌드·재배포(`site:deploy`). Vercel이 "Not authorized"로 튕기면 `npm run site:deploy`만 한 번 더.
+- [ ] `git add deploy/networks.json && git commit -m "deploy: re-pin RTMR3 after CVM restart" && git push`.
+- [ ] 크리에이터 페이지에서 새 콘텐츠를 하나 등록해 attestation 검증이 통과하는지 확인 (심사위원용 데모 콘텐츠도 겸한다).
+- [ ] 심사 기간 동안은 끄지 않는다.
+
 ### F. 제출물 (9/26까지) — 담당: ___
 
 - [x] 한 URL 데모 사이트 — 2026-09-13 · <https://blindfold-psi.vercel.app/> (구매자) / <https://blindfold-psi.vercel.app/creator/> (크리에이터). `npm run site:build` → `site/`를 Vercel 정적 배포. CVM 재핀 시 재빌드·재배포 필요.
