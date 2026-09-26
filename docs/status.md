@@ -106,9 +106,9 @@ Preprod와 메인넷에는 shielded NIGHT가 없다(`docs/superpowers/specs/2026
 CVM은 2026-09-13에 비용 절감을 위해 껐다(`phala cvms stop`). 정지 중에는 스토리지 비용(약 $2/월)만 나간다.
 **켜면 RTMR3가 새로 나오므로** 아래 순서를 그대로 밟는다. 켠 뒤 데모 사이트가 새 핀을 쓸 때까지 크리에이터 페이지의 attestation 검증은 실패한다.
 
-- [ ] `npx phala cvms start ba917fac-0e75-45d5-8572-870b22c51cd7` → 약 40초 뒤 `/health`가 `ok`.
-- [ ] `npm run cvm:repin` — RTMR3 읽기 → `deploy/networks.json` 갱신 → `smoke:live` → 사이트 재빌드·재배포(`site:deploy`). Vercel이 "Not authorized"로 튕기면 `npm run site:deploy`만 한 번 더.
-- [ ] `git add deploy/networks.json && git commit -m "deploy: re-pin RTMR3 after CVM restart" && git push`.
+- [x] `npx phala cvms start ba917fac-0e75-45d5-8572-870b22c51cd7` → 약 40초 뒤 `/health`가 `ok`. — 2026-09-27 00:05 KST 켰다.
+- [x] `npm run cvm:repin` — RTMR3 읽기 → `deploy/networks.json` 갱신 → `smoke:live` → 사이트 재빌드·재배포(`site:deploy`). Vercel이 "Not authorized"로 튕기면 `npm run site:deploy`만 한 번 더. — 2026-09-27: RTMR3 `16278d9f…` → `417be0ea…`, provisioning 공개키 `349c03a3…` 그대로, `attest:inspect` UpToDate, `smoke:live` 통과, 카탈로그 0건(예상대로 비워짐), Vercel 한 번에 배포됨.
+- [x] `git add deploy/networks.json && git commit -m "deploy: re-pin RTMR3 after CVM restart" && git push`. — 2026-09-27.
 - [ ] 크리에이터 페이지에서 새 콘텐츠를 하나 등록해 attestation 검증이 통과하는지 확인 (심사위원용 데모 콘텐츠도 겸한다).
 - [ ] 심사 기간 동안은 끄지 않는다.
 
